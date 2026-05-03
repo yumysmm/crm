@@ -6,7 +6,6 @@
 <title>CRM — Gestión de Vencimientos</title>
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <style>
 :root{
   --bg:#f4f3ef;--surface:#fff;--surface2:#f9f8f5;--border:#e2e0d9;
@@ -557,16 +556,18 @@ tbody td{padding:8px 10px;vertical-align:middle}
 
 <script>
 // ── Storage keys ──────────────────────────────────────────────────────────────
-// ── Supabase config — reemplaza con tus datos ─────────────────────────────────
-const SUPABASE_URL  = 'https://lxscdgzzfrpuahfrqndo.supabase.co';
-const SUPABASE_KEY  = 'sb_publishable_1xFwTWpqqMzHGZnouG0uAg_Sc62m6Fh';
+// ── Supabase config (REST API directo) ────────────────────────────────────────
+const SUPABASE_URL = 'https://lxscdgzzfrpuahfrqndo.supabase.co';
+const SUPABASE_KEY = 'sb_publishable_1xFwTWpqqMzHGZnouG0uAg_Sc62m6Fh';
+const API_HEADERS  = {
+  'Content-Type':  'application/json',
+  'apikey':        SUPABASE_KEY,
+  'Authorization': 'Bearer ' + SUPABASE_KEY,
+  'Prefer':        'return=minimal'
+};
 
-let _sb = null;
-function _initSB(){
-  if(SUPABASE_URL==='TU_SUPABASE_URL') return;
-  try{ _sb = supabase.createClient(SUPABASE_URL, SUPABASE_KEY); }
-  catch(e){ console.warn('Supabase init error:',e); }
-}
+let _sb = true; // siempre activo — usamos fetch directo
+function _initSB(){ /* no-op: usando REST directo */ }
 
 const SK_HIST = 'crm_backup_hist'; // historial solo local
 const hoy=new Date(); hoy.setHours(0,0,0,0);
@@ -603,21 +604,25 @@ function lsGet(k,d){try{return JSON.parse(localStorage.getItem(k))||d;}catch(e){
 function lsSet(k,v){try{localStorage.setItem(k,JSON.stringify(v));}catch(e){}}
 
 async function dbCargar(){
-  if(!_sb) return null;
   try{
-    const {data,error} = await _sb.from('crm_config').select('*');
-    if(error||!data||!data.length) return null;
+    const r = await fetch(SUPABASE_URL+'/rest/v1/crm_config?select=clave,valor', {headers:API_HEADERS});
+    if(!r.ok) return null;
+    const data = await r.json();
+    if(!data||!data.length) return null;
     const cfg={};
-    data.forEach(r=>{ try{cfg[r.clave]=JSON.parse(r.valor);}catch(e){cfg[r.clave]=r.valor;} });
+    data.forEach(row=>{ try{cfg[row.clave]=JSON.parse(row.valor);}catch(e){cfg[row.clave]=row.valor;} });
     return cfg;
-  }catch(e){return null;}
+  }catch(e){ console.warn('dbCargar error:',e); return null; }
 }
 
 async function dbGuardar(clave, valor){
-  if(!_sb) return;
   try{
-    await _sb.from('crm_config').upsert({clave, valor:JSON.stringify(valor)},{onConflict:'clave'});
-  }catch(e){console.warn('Supabase write error:',e);}
+    await fetch(SUPABASE_URL+'/rest/v1/crm_config', {
+      method: 'POST',
+      headers: {...API_HEADERS, 'Prefer':'resolution=merge-duplicates,return=minimal'},
+      body: JSON.stringify({clave, valor:JSON.stringify(valor), updated_at: new Date().toISOString()})
+    });
+  }catch(e){ console.warn('dbGuardar error:',e); }
 }
 
 async function guardarTodo(){
@@ -1344,7 +1349,7 @@ async function inicializar(){
   poblarFiltros(); renderTags(); render(); renderHistorial(); actualizarUltimaCopia();
 
   // Auto-refresh cada 20 segundos para ver cambios de otros usuarios
-  if(_sb){
+  if(SUPABASE_URL){
     setInterval(async()=>{
       const d=await dbCargar();
       if(d){
