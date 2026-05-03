@@ -1,0 +1,1276 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>CRM — Gestión de Vencimientos</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<style>
+:root{
+  --bg:#f4f3ef;--surface:#fff;--surface2:#f9f8f5;--border:#e2e0d9;
+  --text:#1a1917;--muted:#6b6860;--accent:#1a1917;
+  --wa:#25d366;--wa-dark:#128c3e;
+  --activo:#1a7f37;--activo-bg:#d1fadf;
+  --proximo:#9a6700;--proximo-bg:#fff3cd;
+  --vencido:#cf222e;--vencido-bg:#ffd7d7;
+  --notif-bg:#e8f0fe;--notif:#1a56db;
+  --r:10px;--rs:6px;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);min-height:100vh;font-size:14px}
+.app{max-width:1400px;margin:0 auto;padding:22px 14px 60px}
+
+.header{display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:20px;gap:10px;flex-wrap:wrap}
+.header h1{font-size:21px;font-weight:600;letter-spacing:-.5px}
+.header p{font-size:12.5px;color:var(--muted);margin-top:2px}
+.hact{display:flex;gap:7px;flex-wrap:wrap;align-items:center}
+
+.stats{display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:10px;margin-bottom:18px}
+.stat{background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:12px 14px}
+.stat .num{font-size:24px;font-weight:600;letter-spacing:-1px;line-height:1}
+.stat .lbl{font-size:11px;color:var(--muted);margin-top:3px}
+.s-total .num{color:var(--text)}.s-activo .num{color:var(--activo)}.s-proximo .num{color:var(--proximo)}.s-vencido .num{color:var(--vencido)}.s-notif .num{color:var(--notif)}
+
+.tabs{display:flex;gap:0;border-bottom:2px solid var(--border);margin-bottom:14px;overflow-x:auto}
+.tab{padding:8px 16px;font-size:13px;font-weight:500;color:var(--muted);cursor:pointer;border-bottom:2px solid transparent;margin-bottom:-2px;white-space:nowrap;transition:all .15s}
+.tab:hover{color:var(--text)}
+.tab.active{color:var(--accent);border-bottom-color:var(--accent)}
+
+.toolbar{display:flex;gap:7px;margin-bottom:12px;flex-wrap:wrap;align-items:center}
+.search-wrap{position:relative;min-width:150px}
+.search-wrap svg{position:absolute;left:9px;top:50%;transform:translateY(-50%);width:13px;height:13px;color:var(--muted);pointer-events:none}
+.search-wrap input{width:100%;height:34px;padding:0 10px 0 29px;border:1px solid var(--border);border-radius:var(--rs);background:var(--surface);font-family:inherit;font-size:12.5px;color:var(--text);outline:none}
+.search-wrap input:focus{border-color:#999}
+select,input[type=date],input[type=month]{height:34px;padding:0 9px;border:1px solid var(--border);border-radius:var(--rs);background:var(--surface);font-family:inherit;font-size:12.5px;color:var(--text);outline:none;cursor:pointer}
+.filter-label{font-size:11.5px;color:var(--muted);white-space:nowrap;display:flex;align-items:center;gap:5px}
+.clr-btn{font-size:11.5px;color:var(--muted);background:none;border:none;cursor:pointer;padding:2px 4px;border-radius:3px;text-decoration:underline}
+.clr-btn:hover{color:var(--text)}
+
+.btn{height:34px;padding:0 13px;border-radius:var(--rs);border:none;font-family:inherit;font-size:12.5px;font-weight:500;cursor:pointer;transition:all .15s;display:inline-flex;align-items:center;gap:5px;white-space:nowrap}
+.btn svg{width:13px;height:13px;flex-shrink:0}
+.btn-dark{background:var(--accent);color:#fff}.btn-dark:hover{opacity:.85}
+.btn-wa{background:var(--wa);color:#fff}.btn-wa:hover{background:var(--wa-dark)}
+.btn-outline{background:var(--surface);color:var(--text);border:1px solid var(--border)}.btn-outline:hover{background:var(--surface2)}
+.btn-green{background:#e6f7ec;color:var(--activo);border:1px solid #a8e0bb}.btn-green:hover{background:#d1fadf}
+.btn-blue{background:#e8f0fe;color:#1a56db;border:1px solid #a4cafe}.btn-blue:hover{background:#dbeafe}
+.btn-sm{height:28px;padding:0 10px;font-size:12px}
+
+.svc-tags{display:flex;flex-wrap:wrap;gap:5px;margin-bottom:12px}
+.tag{display:inline-flex;align-items:center;gap:4px;height:27px;padding:0 10px;border-radius:20px;border:1.5px solid var(--border);background:var(--surface);font-size:12px;font-weight:500;cursor:pointer;transition:all .15s;color:var(--muted)}
+.tag:hover{border-color:#aaa;color:var(--text)}
+.tag.active{border-color:var(--accent);background:var(--accent);color:#fff}
+.tag .dot{width:6px;height:6px;border-radius:50%;flex-shrink:0}
+.tag .cnt{font-size:10.5px;opacity:.7;margin-left:1px}
+
+.tbl-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--r);overflow:hidden}
+.tbl-outer{overflow-x:auto}
+table{width:100%;border-collapse:collapse;min-width:1180px}
+thead th{background:var(--surface2);padding:8px 10px;text-align:left;font-size:10.5px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;border-bottom:1px solid var(--border);white-space:nowrap}
+thead th.sortable{cursor:pointer;user-select:none}
+thead th.sortable:hover{color:var(--text)}
+tbody tr{border-bottom:1px solid var(--border);transition:background .1s}
+tbody tr:last-child{border-bottom:none}
+tbody tr:hover{background:var(--surface2)}
+tbody td{padding:8px 10px;vertical-align:middle}
+.mono{font-family:'DM Mono',monospace;font-size:12px}
+.nombre{font-weight:500;font-size:13px}
+
+.badge{display:inline-block;font-size:10.5px;font-weight:600;padding:2px 8px;border-radius:20px;white-space:nowrap}
+.b-activo{background:var(--activo-bg);color:var(--activo)}
+.b-proximo{background:var(--proximo-bg);color:var(--proximo)}
+.b-vencido{background:var(--vencido-bg);color:var(--vencido)}
+
+.svc-badge{display:inline-flex;align-items:center;gap:4px;font-size:11px;font-weight:500;padding:2px 7px;border-radius:20px;white-space:nowrap}
+.svc-dot{width:5px;height:5px;border-radius:50%;flex-shrink:0}
+.city-badge{display:inline-block;font-size:11px;padding:2px 7px;border-radius:4px;background:var(--surface2);border:1px solid var(--border);color:var(--muted);white-space:nowrap}
+.seller-badge{display:inline-block;font-size:11px;padding:2px 7px;border-radius:4px;background:#fef3c7;border:1px solid #fcd34d;color:#92400e;white-space:nowrap}
+.valor-cell{font-family:'DM Mono',monospace;font-size:12px;color:#1a7f37;font-weight:600;white-space:nowrap}
+.total-row td{background:#f0fdf4!important;font-weight:600;border-top:2px solid #a8e0bb}
+.total-row .valor-cell{font-size:13px;color:#1a7f37}
+.stat-total-val .num{color:#1a7f37}
+
+.notif-badge{display:inline-flex;align-items:center;gap:4px;font-size:10.5px;font-weight:600;padding:2px 8px;border-radius:20px;white-space:nowrap}
+.notif-si{background:var(--notif-bg);color:var(--notif)}
+.notif-no{background:var(--surface2);color:var(--muted);border:1px solid var(--border)}
+
+.d-ok{color:var(--activo);font-weight:500;font-size:12px}
+.d-warn{color:var(--proximo);font-weight:500;font-size:12px}
+.d-bad{color:var(--vencido);font-weight:500;font-size:12px}
+.msg-prev{font-size:11px;color:var(--muted);max-width:150px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+
+.btn-wa-row{display:inline-flex;align-items:center;gap:4px;font-family:inherit;font-size:11.5px;font-weight:600;padding:5px 10px;border-radius:var(--rs);border:none;cursor:pointer;background:var(--wa);color:#fff;transition:all .15s;white-space:nowrap}
+.btn-wa-row:hover{background:var(--wa-dark);transform:scale(1.02)}
+.btn-wa-row.sent{background:var(--notif-bg);color:var(--notif);border:1px solid #a4cafe}
+.btn-wa-row.sent:hover{background:#dbeafe}
+.btn-wa-row:disabled{background:var(--border);color:var(--muted);cursor:default;transform:none}
+.btn-wa-row svg{width:12px;height:12px;fill:currentColor;flex-shrink:0}
+
+.row-acts{display:flex;gap:3px}
+.ic-btn{width:26px;height:26px;display:inline-flex;align-items:center;justify-content:center;border:1px solid var(--border);border-radius:var(--rs);background:none;cursor:pointer;font-size:12px;color:var(--muted);transition:all .12s}
+.ic-btn:hover{background:var(--surface2);color:var(--text);border-color:#bbb}
+.ic-btn.del:hover{background:var(--vencido-bg);color:var(--vencido);border-color:var(--vencido)}
+.ic-btn.runt:hover{background:#e8f0fe;color:#1a56db;border-color:#a4cafe}
+.empty{text-align:center;padding:48px 16px;color:var(--muted);font-size:13px}
+
+/* RUNT Panel */
+.panel{background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:18px 20px;margin-bottom:16px;display:none}
+.panel.open{display:block}
+.panel h3{font-size:13.5px;font-weight:600;margin-bottom:10px}
+.runt-notice{background:#fff8e6;border:1px solid #fcd34d;border-radius:var(--rs);padding:12px 14px;font-size:12px;color:#92400e;margin-bottom:12px;line-height:1.6}
+.runt-link-btn{display:inline-flex;align-items:center;gap:6px;height:34px;padding:0 16px;background:#1a56db;color:#fff;border:none;border-radius:var(--rs);font-family:inherit;font-size:12.5px;font-weight:500;cursor:pointer}
+.runt-link-btn:hover{opacity:.85}
+
+/* IE Panel */
+.ie-grid{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+.ie-box{border:1px dashed var(--border);border-radius:var(--rs);padding:14px;text-align:center}
+.ie-box h4{font-size:12.5px;font-weight:600;margin-bottom:4px}
+.ie-box p{font-size:11.5px;color:var(--muted);margin-bottom:10px;line-height:1.5}
+.drop-zone{border:2px dashed var(--border);border-radius:var(--rs);padding:20px 12px;cursor:pointer;transition:all .2s;margin-bottom:8px;background:var(--surface2)}
+.drop-zone:hover,.drop-zone.dragover{border-color:var(--accent);background:#f0efe9}
+.drop-zone svg{width:22px;height:22px;color:var(--muted);margin:0 auto 6px;display:block}
+.drop-zone strong{font-size:12.5px;color:var(--text);display:block;margin-bottom:2px}
+.drop-zone p{font-size:11.5px;color:var(--muted);margin:0}
+
+/* Modal */
+.overlay{position:fixed;inset:0;background:rgba(0,0,0,.35);z-index:200;display:flex;align-items:center;justify-content:center;padding:14px;backdrop-filter:blur(2px)}
+.modal{background:var(--surface);border-radius:14px;border:1px solid var(--border);padding:24px;width:min(540px,100%);box-shadow:0 20px 60px rgba(0,0,0,.15);max-height:92vh;overflow-y:auto}
+.modal h2{font-size:15px;font-weight:600;margin-bottom:16px}
+.field{margin-bottom:11px}
+.field label{display:block;font-size:10.5px;font-weight:600;color:var(--muted);margin-bottom:4px;text-transform:uppercase;letter-spacing:.4px}
+.field input,.field select{width:100%;height:36px;padding:0 10px;border:1px solid var(--border);border-radius:var(--rs);font-family:inherit;font-size:13px;color:var(--text);background:var(--bg);outline:none;transition:border-color .15s}
+.field input:focus,.field select:focus{border-color:var(--accent);background:var(--surface)}
+.field-row{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.field-row3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px}
+.modal-foot{display:flex;gap:8px;justify-content:flex-end;margin-top:16px}
+.btn-cancel{height:34px;padding:0 14px;border:1px solid var(--border);border-radius:var(--rs);background:none;font-family:inherit;font-size:12.5px;color:var(--muted);cursor:pointer}
+.btn-cancel:hover{background:var(--surface2)}
+.btn-save{height:34px;padding:0 18px;border-radius:var(--rs);border:none;background:var(--accent);color:#fff;font-family:inherit;font-size:12.5px;font-weight:600;cursor:pointer}
+.btn-save:hover{opacity:.85}
+
+/* Config listas (svc / ciudades / vendedores) */
+.cfg-section{margin-top:14px;border-top:1px solid var(--border);padding-top:14px}
+.cfg-section h4{font-size:11px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.4px;margin-bottom:8px}
+.cfg-item{display:flex;align-items:center;gap:7px;margin-bottom:7px}
+.cfg-item input[type=text]{flex:1;height:30px;font-size:12px;padding:0 8px;border:1px solid var(--border);border-radius:var(--rs);font-family:inherit;background:var(--bg);outline:none}
+.cfg-item input[type=color]{width:30px;height:30px;padding:2px;border-radius:var(--rs);border:1px solid var(--border);cursor:pointer}
+.cfg-add-row{display:flex;gap:7px;margin-top:4px}
+.cfg-add-row input[type=text]{flex:1;height:30px;font-size:12px;padding:0 8px;border:1px solid var(--border);border-radius:var(--rs);font-family:inherit;background:var(--bg);outline:none}
+.cfg-add-row input[type=color]{width:30px;height:30px;padding:2px;border-radius:var(--rs);border:1px solid var(--border);cursor:pointer}
+
+/* Import preview */
+.prev-table-wrap{max-height:230px;overflow-y:auto;border:1px solid var(--border);border-radius:var(--rs);margin:10px 0}
+.prev-table-wrap table{min-width:unset;font-size:11.5px}
+.prev-table-wrap thead th{font-size:10px;padding:6px 8px}
+.prev-table-wrap tbody td{padding:5px 8px}
+.import-info{font-size:12px;color:var(--muted);margin-bottom:7px}
+.import-info b{color:var(--text)}
+.import-warn{font-size:11.5px;color:var(--proximo);background:var(--proximo-bg);padding:7px 10px;border-radius:var(--rs);margin-top:7px}
+
+.pagination{display:flex;align-items:center;justify-content:space-between;padding:12px 14px;border-top:1px solid var(--border);background:var(--surface2);flex-wrap:wrap;gap:8px}
+.pagination-info{font-size:12.5px;color:var(--muted)}
+.pagination-info b{color:var(--text)}
+.pagination-btns{display:flex;align-items:center;gap:4px}
+.pg-btn{height:30px;min-width:30px;padding:0 8px;border:1px solid var(--border);border-radius:var(--rs);background:var(--surface);font-family:inherit;font-size:12.5px;color:var(--text);cursor:pointer;transition:all .15s;display:inline-flex;align-items:center;justify-content:center}
+.pg-btn:hover:not(:disabled){background:var(--surface2);border-color:#aaa}
+.pg-btn.active{background:var(--accent);color:#fff;border-color:var(--accent);font-weight:600}
+.pg-btn:disabled{opacity:.4;cursor:default}
+.pg-select{height:30px;padding:0 8px;border:1px solid var(--border);border-radius:var(--rs);background:var(--surface);font-family:inherit;font-size:12.5px;color:var(--text);outline:none;cursor:pointer}
+.toast{position:fixed;bottom:22px;right:22px;background:var(--accent);color:#fff;font-size:12.5px;padding:9px 16px;border-radius:8px;z-index:300;opacity:0;transform:translateY(8px);transition:all .25s;pointer-events:none;max-width:300px}
+.toast.show{opacity:1;transform:translateY(0)}
+
+/* Maestro mensajes */
+.msg-modal{width:min(760px,100%)}
+.msg-tabs{display:flex;gap:0;border-bottom:1.5px solid var(--border);margin-bottom:16px}
+.msg-tab{padding:7px 16px;font-size:12.5px;font-weight:500;color:var(--muted);cursor:pointer;border-bottom:2px solid transparent;margin-bottom:-1.5px;white-space:nowrap;transition:all .15s}
+.msg-tab:hover{color:var(--text)}
+.msg-tab.active{color:var(--accent);border-bottom-color:var(--accent)}
+.msg-card{background:var(--surface2);border:1px solid var(--border);border-radius:var(--rs);padding:14px;margin-bottom:12px}
+.msg-card-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;flex-wrap:wrap;gap:8px}
+.msg-card-head h4{font-size:12.5px;font-weight:600;color:var(--text)}
+.msg-badge-auto{display:inline-flex;align-items:center;gap:4px;font-size:11px;font-weight:500;padding:2px 8px;border-radius:20px;background:#e8f0fe;color:#1a56db;border:1px solid #a4cafe}
+.msg-badge-custom{display:inline-flex;align-items:center;gap:4px;font-size:11px;font-weight:500;padding:2px 8px;border-radius:20px;background:#d1fadf;color:#1a7f37;border:1px solid #a8e0bb}
+.msg-badge-off{display:inline-flex;align-items:center;gap:4px;font-size:11px;font-weight:500;padding:2px 8px;border-radius:20px;background:var(--surface2);color:var(--muted);border:1px solid var(--border)}
+.msg-textarea{width:100%;min-height:80px;padding:9px 11px;border:1px solid var(--border);border-radius:var(--rs);font-family:inherit;font-size:12.5px;color:var(--text);background:var(--surface);outline:none;resize:vertical;line-height:1.55;transition:border-color .15s}
+.msg-textarea:focus{border-color:var(--accent)}
+.msg-textarea:disabled{background:var(--surface2);color:var(--muted);resize:none;cursor:default}
+.msg-vars{display:flex;flex-wrap:wrap;gap:5px;margin-top:8px}
+.msg-var{display:inline-block;font-size:11px;font-family:'DM Mono',monospace;padding:2px 7px;border-radius:4px;background:#fff3cd;border:1px solid #fcd34d;color:#92400e;cursor:pointer;transition:opacity .15s}
+.msg-var:hover{opacity:.75}
+.msg-preview-box{background:var(--surface);border:1px solid var(--border);border-radius:var(--rs);padding:10px 12px;font-size:12px;color:var(--muted);line-height:1.55;margin-top:8px;min-height:48px;white-space:pre-wrap;word-break:break-word}
+.msg-preview-label{font-size:10.5px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.4px;margin-bottom:4px}
+.msg-reset-btn{font-size:11.5px;color:var(--muted);background:none;border:none;cursor:pointer;text-decoration:underline;padding:0}
+.msg-reset-btn:hover{color:var(--text)}
+.msg-mode-toggle{display:flex;gap:7px;align-items:center}
+.msg-mode-toggle label{font-size:12px;color:var(--muted);cursor:pointer;display:flex;align-items:center;gap:4px}
+.msg-mode-toggle input[type=radio]{cursor:pointer;accent-color:var(--accent)}
+
+@media(max-width:680px){
+  .stats{grid-template-columns:repeat(3,1fr);font-size:12px}
+  .ie-grid{grid-template-columns:1fr}
+  .header{flex-direction:column}
+  .field-row,.field-row3{grid-template-columns:1fr}
+}
+</style>
+</head>
+<body>
+<div class="app">
+
+  <!-- Header -->
+  <div class="header">
+    <div>
+      <h1>CRM — Vencimientos</h1>
+      <p id="fecha-hoy"></p>
+    </div>
+    <div class="hact">
+      <button class="btn btn-outline" onclick="togglePanel('backup-panel')" title="Copia y restauracion de la base de datos">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+        Copia / Restaurar
+      </button>
+      <button class="btn btn-outline" onclick="togglePanel('runt-panel')">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="M21 21l-4.35-4.35"/></svg>
+        Consultar RUNT
+      </button>
+      <button class="btn btn-outline" onclick="togglePanel('ie-panel')">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4M7 10l5 5 5-5M12 15V3"/></svg>
+        Importar / Exportar
+      </button>
+      <button class="btn btn-outline" onclick="abrirMensajes()">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/></svg>
+        Mensajes
+      </button>
+      <button class="btn btn-outline" onclick="abrirConfig()">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 010 2.83 2 2 0 01-2.83 0l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-4 0v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83-2.83l.06-.06A1.65 1.65 0 004.68 15a1.65 1.65 0 00-1.51-1H3a2 2 0 010-4h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 012.83-2.83l.06.06A1.65 1.65 0 009 4.68a1.65 1.65 0 001-1.51V3a2 2 0 014 0v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 012.83 2.83l-.06.06A1.65 1.65 0 0019.4 9a1.65 1.65 0 001.51 1H21a2 2 0 010 4h-.09a1.65 1.65 0 00-1.51 1z"/></svg>
+        Configurar
+      </button>
+      <button class="btn btn-wa" onclick="notificarVencidos()">
+        <svg viewBox="0 0 24 24" fill="currentColor"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"/></svg>
+        Notificar vencidos
+      </button>
+      <button class="btn btn-dark" onclick="abrirModal()">+ Nuevo cliente</button>
+    </div>
+  </div>
+
+  <!-- Stats -->
+  <div class="stats">
+    <div class="stat s-total"><div class="num" id="s-total">0</div><div class="lbl">Total clientes</div></div>
+    <div class="stat s-activo"><div class="num" id="s-activo">0</div><div class="lbl">Activos</div></div>
+    <div class="stat s-proximo"><div class="num" id="s-proximo">0</div><div class="lbl">Proximos 30d</div></div>
+    <div class="stat s-vencido"><div class="num" id="s-vencido">0</div><div class="lbl">Vencidos</div></div>
+    <div class="stat s-notif"><div class="num" id="s-notif">0</div><div class="lbl">Notificados hoy</div></div>
+    <div class="stat stat-total-val"><div class="num" id="s-total-val">$0</div><div class="lbl">Total recaudo</div></div>
+  </div>
+
+  <!-- Backup Panel -->
+  <div class="panel" id="backup-panel">
+    <h3>Copia de seguridad y restauracion</h3>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px">
+
+      <!-- COPIA -->
+      <div style="border:1px dashed var(--border);border-radius:var(--rs);padding:16px;text-align:center">
+        <div style="font-size:22px;margin-bottom:8px">💾</div>
+        <h4 style="font-size:13px;font-weight:600;margin-bottom:6px">Crear copia de seguridad</h4>
+        <p style="font-size:12px;color:var(--muted);margin-bottom:14px;line-height:1.5">
+          Descarga un archivo <b>.json</b> con toda la base de datos: clientes, servicios, ciudades, vendedores y mensajes.
+        </p>
+        <button class="btn btn-dark" style="width:100%;justify-content:center;height:40px" onclick="crearCopia()">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:14px;height:14px"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+          Descargar copia ahora
+        </button>
+        <p style="font-size:11px;color:var(--muted);margin-top:10px">Ultima copia: <span id="ultima-copia">Nunca</span></p>
+      </div>
+
+      <!-- RESTAURAR -->
+      <div style="border:1px dashed var(--border);border-radius:var(--rs);padding:16px;text-align:center">
+        <div style="font-size:22px;margin-bottom:8px">🔄</div>
+        <h4 style="font-size:13px;font-weight:600;margin-bottom:6px">Restaurar copia de seguridad</h4>
+        <p style="font-size:12px;color:var(--muted);margin-bottom:14px;line-height:1.5">
+          Sube un archivo <b>.json</b> de copia anterior. <span style="color:var(--vencido);font-weight:500">Reemplaza todos los datos actuales.</span>
+        </p>
+        <div style="border:2px dashed var(--border);border-radius:var(--rs);padding:18px 12px;cursor:pointer;transition:all .2s;margin-bottom:10px;background:var(--surface2)" id="restore-drop" onclick="document.getElementById('restore-input').click()" ondragover="restoreDragOver(event)" ondragleave="restoreDragLeave()" ondrop="restoreDropFile(event)">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" style="width:22px;height:22px;color:var(--muted);margin:0 auto 6px;display:block"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+          <strong style="font-size:12.5px;color:var(--text);display:block;margin-bottom:2px">Clic o arrastra el archivo .json</strong>
+          <p style="font-size:11.5px;color:var(--muted);margin:0">Solo archivos de copia CRM</p>
+        </div>
+        <input type="file" id="restore-input" accept=".json" style="display:none" onchange="restaurarCopia(event)">
+        <div style="background:#fff8e6;border:1px solid #fcd34d;border-radius:var(--rs);padding:8px 12px;font-size:11.5px;color:#92400e;text-align:left;line-height:1.5">
+          ⚠️ Esta accion reemplaza <b>todos</b> los datos actuales. Se recomienda crear una copia antes de restaurar.
+        </div>
+      </div>
+
+    </div>
+
+    <!-- Historial de copias -->
+    <div style="margin-top:14px;border-top:1px solid var(--border);padding-top:12px">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px">
+        <span style="font-size:12px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.4px">Historial de copias</span>
+        <button onclick="limpiarHistorial()" style="font-size:11.5px;color:var(--muted);background:none;border:none;cursor:pointer;text-decoration:underline">Limpiar historial</button>
+      </div>
+      <div id="historial-copias" style="font-size:12px;color:var(--muted)">Sin copias registradas.</div>
+    </div>
+  </div>
+
+  <!-- RUNT Panel -->
+  <div class="panel" id="runt-panel">
+    <h3>Consultar vigencia en el RUNT</h3>
+    <div class="runt-notice"><b>Nota:</b> El RUNT oficial no tiene API publica — requiere CAPTCHA y cedula del propietario. Ingresa la placa y te abrimos el portal oficial para consultarla manualmente.</div>
+    <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin-bottom:10px">
+      <input id="runt-placa" type="text" placeholder="Placa (ej: ABC123)" style="height:34px;padding:0 11px;border:1px solid var(--border);border-radius:var(--rs);font-family:inherit;font-size:12.5px;width:200px;outline:none;background:var(--bg)" maxlength="7">
+      <button class="runt-link-btn" onclick="abrirRUNT()">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 13v6a2 2 0 01-2 2H5a2 2 0 01-2-2V8a2 2 0 012-2h6M15 3h6v6M10 14L21 3"/></svg>
+        Abrir RUNT.gov.co
+      </button>
+    </div>
+    <p style="font-size:11.5px;color:var(--muted)">Despues de consultar, actualiza la fecha de vencimiento del cliente en el CRM.</p>
+  </div>
+
+  <!-- IE Panel -->
+  <div class="panel" id="ie-panel">
+    <h3>Importar y Exportar clientes</h3>
+    <div class="ie-grid">
+      <div class="ie-box">
+        <h4>Importar desde Excel</h4>
+        <p>Columnas: <b>nombre, placa, fecha, celular, servicio, ciudad, vendedor</b></p>
+        <div class="drop-zone" id="drop-zone" onclick="document.getElementById('file-input').click()" ondragover="dragOver(event)" ondragleave="dragLeave(event)" ondrop="dropFile(event)">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+          <strong>Clic o arrastra tu archivo</strong>
+          <p>.xlsx · .xls · .csv</p>
+        </div>
+        <input type="file" id="file-input" accept=".xlsx,.xls,.csv" style="display:none" onchange="leerArchivo(event)">
+        <button class="btn btn-outline" style="width:100%;justify-content:center" onclick="descargarPlantilla()">Descargar plantilla Excel</button>
+      </div>
+      <div class="ie-box">
+        <h4>Exportar a Excel</h4>
+        <p>Incluye Estado, Dias, Ciudad, Vendedor, Notificacion y Link WhatsApp.</p>
+        <div style="display:flex;flex-direction:column;gap:7px">
+          <button class="btn btn-green" style="width:100%;justify-content:center;height:38px" onclick="exportarExcel('todos')">Exportar todos los clientes</button>
+          <button class="btn btn-blue" style="width:100%;justify-content:center;height:38px" onclick="exportarExcel('vencidos')">Exportar vencidos / proximos</button>
+          <button class="btn btn-outline" style="width:100%;justify-content:center;height:38px" onclick="exportarExcel('filtro')">Exportar vista actual</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Tabs -->
+  <div class="tabs">
+    <div class="tab active" onclick="setTab('todos')">Todos</div>
+    <div class="tab" onclick="setTab('pendiente')">Sin notificar</div>
+    <div class="tab" onclick="setTab('notificado')">Notificados</div>
+  </div>
+
+  <!-- Svc tags -->
+  <div id="svc-tags-wrap"></div>
+
+  <!-- Toolbar -->
+  <div class="toolbar">
+    <div class="search-wrap">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
+      <input type="text" id="buscar" placeholder="Buscar nombre o placa...">
+    </div>
+    <select id="filtro-estado">
+      <option value="">Todos los estados</option>
+      <option value="ACTIVO">Activo</option>
+      <option value="PROXIMO">Proximo (30d)</option>
+      <option value="VENCIDO">Vencido</option>
+    </select>
+    <select id="filtro-ciudad"><option value="">Todas las ciudades</option></select>
+    <select id="filtro-vendedor"><option value="">Todos los vendedores</option></select>
+    <span class="filter-label">
+      Mes: <input type="month" id="filtro-mes">
+      <button class="clr-btn" onclick="limpiarF('filtro-mes')">limpiar</button>
+    </span>
+    <span class="filter-label">
+      Dia: <input type="date" id="filtro-dia">
+      <button class="clr-btn" onclick="limpiarF('filtro-dia')">limpiar</button>
+    </span>
+  </div>
+
+  <!-- Table -->
+  <div class="tbl-card">
+    <div class="tbl-outer">
+      <table>
+        <thead>
+          <tr>
+            <th>N°</th>
+            <th class="sortable" onclick="sortBy('nombre')">Nombre ↕</th>
+            <th>Placa</th>
+            <th>Servicio</th>
+            <th>Ciudad</th>
+            <th>Vendedor</th>
+            <th class="sortable" onclick="sortBy('fecha')">Vencimiento ↕</th>
+            <th>Estado</th>
+            <th class="sortable" onclick="sortBy('dias')">Dias ↕</th>
+            <th>Celular</th>
+            <th>Notificacion</th>
+            <th>Mensaje</th>
+            <th>Enviar WA</th>
+            <th></th>
+          </tr>
+        </thead>
+        <tbody id="tabla-body"></tbody>
+      </table>
+    </div>
+    <!-- Paginacion -->
+    <div class="pagination" id="pagination-bar">
+      <div class="pagination-info" id="pagination-info"></div>
+      <div class="pagination-btns" id="pagination-btns"></div>
+    </div>
+  </div>
+</div>
+
+<!-- Modal cliente -->
+<div id="modal" style="display:none">
+  <div class="overlay" onclick="co('modal',event)">
+    <div class="modal" onclick="event.stopPropagation()">
+      <h2 id="modal-titulo">Nuevo cliente</h2>
+      <div class="field-row">
+        <div class="field"><label>Nombre completo</label><input id="f-nombre" type="text" placeholder="Carlos Rodriguez"></div>
+        <div class="field"><label>Placa</label><input id="f-placa" type="text" placeholder="ABC123"></div>
+      </div>
+      <div class="field-row">
+        <div class="field"><label>Fecha de vencimiento</label><input id="f-fecha" type="date"></div>
+        <div class="field"><label>Tipo de servicio</label><select id="f-servicio"></select></div>
+      </div>
+      <div class="field-row">
+        <div class="field"><label>Ciudad</label><select id="f-ciudad"></select></div>
+        <div class="field"><label>Vendedor</label><select id="f-vendedor"></select></div>
+      </div>
+      <div class="field"><label>Numero celular (sin +57)</label><input id="f-celular" type="tel" placeholder="3001234567" maxlength="10"></div>
+      <div class="field-row">
+        <div class="field"><label>Valor SOAT ($)</label><input id="f-valor-soat" type="number" placeholder="0" min="0" step="1000"></div>
+        <div class="field"><label>Valor Servicio ($)</label><input id="f-valor-svc" type="number" placeholder="20000" min="0" step="1000"></div>
+      </div>
+      <div class="modal-foot">
+        <button class="btn-cancel" onclick="document.getElementById('modal').style.display='none'">Cancelar</button>
+        <button class="btn-save" onclick="guardarCliente()">Guardar</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Modal configuracion general -->
+<div id="modal-config" style="display:none">
+  <div class="overlay" onclick="co('modal-config',event)">
+    <div class="modal" style="width:min(600px,100%)" onclick="event.stopPropagation()">
+      <h2>Configuracion</h2>
+
+      <!-- Servicios -->
+      <div class="cfg-section">
+        <h4>Tipos de servicio</h4>
+        <div id="cfg-svc-list"></div>
+        <div class="cfg-add-row">
+          <input type="color" id="new-svc-color" value="#4f46e5">
+          <input type="text" id="new-svc-nombre" placeholder="Nuevo servicio..." maxlength="30">
+          <button class="btn btn-dark btn-sm" onclick="agregarItem('svc')">Agregar</button>
+        </div>
+      </div>
+
+      <!-- Ciudades -->
+      <div class="cfg-section">
+        <h4>Ciudades</h4>
+        <div id="cfg-ciudad-list"></div>
+        <div class="cfg-add-row">
+          <input type="text" id="new-ciudad" placeholder="Nueva ciudad..." maxlength="40" style="flex:1">
+          <button class="btn btn-dark btn-sm" onclick="agregarItem('ciudad')">Agregar</button>
+        </div>
+      </div>
+
+      <!-- Vendedores -->
+      <div class="cfg-section">
+        <h4>Vendedores</h4>
+        <div id="cfg-vendedor-list"></div>
+        <div class="cfg-add-row">
+          <input type="text" id="new-vendedor" placeholder="Nombre del vendedor..." maxlength="40" style="flex:1">
+          <button class="btn btn-dark btn-sm" onclick="agregarItem('vendedor')">Agregar</button>
+        </div>
+      </div>
+
+      <div class="modal-foot">
+        <button class="btn-cancel" onclick="document.getElementById('modal-config').style.display='none'">Cancelar</button>
+        <button class="btn-save" onclick="guardarConfig()">Guardar cambios</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Modal maestro de mensajes -->
+<div id="modal-mensajes" style="display:none">
+  <div class="overlay" onclick="co('modal-mensajes',event)">
+    <div class="modal msg-modal" onclick="event.stopPropagation()">
+      <h2>Maestro de mensajes</h2>
+      <p style="font-size:12px;color:var(--muted);margin-bottom:14px;line-height:1.6">
+        Personaliza los mensajes para cada estado. Usa las variables en <span style="font-family:'DM Mono',monospace;background:#fff3cd;padding:1px 5px;border-radius:3px;font-size:11px">{llaves}</span> para insertar datos del cliente automaticamente.
+        Puedes usar el modo <b>automatico</b> (se genera con los datos del cliente) o <b>personalizado</b> (tu propio texto con variables).
+      </p>
+
+      <!-- Tabs estados -->
+      <div class="msg-tabs">
+        <div class="msg-tab active" onclick="setMsgTab('VENCIDO')">Vencido</div>
+        <div class="msg-tab" onclick="setMsgTab('PROXIMO')">Proximo a vencer</div>
+        <div class="msg-tab" onclick="setMsgTab('ACTIVO')">Activo</div>
+      </div>
+
+      <div id="msg-editor"></div>
+
+      <div style="background:var(--surface2);border:1px solid var(--border);border-radius:var(--rs);padding:12px 14px;margin-top:4px">
+        <div class="msg-preview-label">Variables disponibles — clic para copiar</div>
+        <div class="msg-vars">
+          <span class="msg-var" onclick="copiarVar('{nombre}')">&#123;nombre&#125;</span>
+          <span class="msg-var" onclick="copiarVar('{placa}')">&#123;placa&#125;</span>
+          <span class="msg-var" onclick="copiarVar('{servicio}')">&#123;servicio&#125;</span>
+          <span class="msg-var" onclick="copiarVar('{fecha}')">&#123;fecha&#125;</span>
+          <span class="msg-var" onclick="copiarVar('{dias}')">&#123;dias&#125;</span>
+          <span class="msg-var" onclick="copiarVar('{ciudad}')">&#123;ciudad&#125;</span>
+          <span class="msg-var" onclick="copiarVar('{vendedor}')">&#123;vendedor&#125;</span>
+          <span class="msg-var" onclick="copiarVar('{valor_soat}')">&#123;valor_soat&#125;</span>
+          <span class="msg-var" onclick="copiarVar('{valor_svc}')">&#123;valor_svc&#125;</span>
+          <span class="msg-var" onclick="copiarVar('{total}')">&#123;total&#125;</span>
+        </div>
+      </div>
+
+      <div class="modal-foot">
+        <button class="btn-cancel" onclick="document.getElementById('modal-mensajes').style.display='none'">Cerrar</button>
+        <button class="btn-save" onclick="guardarMensajes()">Guardar mensajes</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Modal import preview -->
+<div id="modal-import" style="display:none">
+  <div class="overlay" onclick="co('modal-import',event)">
+    <div class="modal" style="width:min(660px,100%)" onclick="event.stopPropagation()">
+      <h2>Vista previa de importacion</h2>
+      <div class="import-info" id="import-info"></div>
+      <div class="prev-table-wrap" id="prev-table"></div>
+      <div id="import-warn" class="import-warn" style="display:none"></div>
+      <div class="modal-foot">
+        <button class="btn-cancel" onclick="document.getElementById('modal-import').style.display='none'">Cancelar</button>
+        <button class="btn-save" onclick="confirmarImport()">Importar clientes</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+// ── Storage keys ──────────────────────────────────────────────────────────────
+const SK='crm_v5', SK_SVC='crm_v5_svc', SK_CIT='crm_v5_cit', SK_VEN='crm_v5_ven';
+const hoy=new Date(); hoy.setHours(0,0,0,0);
+const hoyStr=hoy.toISOString().slice(0,10);
+document.getElementById('fecha-hoy').textContent=hoy.toLocaleDateString('es-CO',{weekday:'long',day:'numeric',month:'long',year:'numeric'});
+
+// ── Datos demo ────────────────────────────────────────────────────────────────
+const DEMO_SVC=[
+  {id:'soat',nombre:'SOAT',color:'#2563eb'},
+  {id:'rtm', nombre:'Revision Tecnica',color:'#7c3aed'},
+  {id:'seguros',nombre:'Seguro Todo Riesgo',color:'#0891b2'},
+  {id:'poliza',nombre:'Poliza RC',color:'#059669'},
+  {id:'otro', nombre:'Otro',color:'#9ca3af'},
+];
+const DEMO_CIT=['Medellin','Bogota','Cali','Barranquilla','Bucaramanga','Pereira','Manizales','Cartagena'];
+const DEMO_VEN=['Juan Gomez','Maria Lopez','Carlos Perez','Ana Martinez'];
+const DEMO_C=[
+  {id:1, nombre:'Carlos Rodriguez',placa:'ABC123',fecha:'2025-03-10',celular:'3001234567',servicio:'soat',   ciudad:'Medellin',   vendedor:'Juan Gomez',   notifFecha:null,valorSoat:180000,valorSvc:20000},
+  {id:2, nombre:'Maria Garcia',    placa:'XYZ456',fecha:'2026-05-20',celular:'3119876543',servicio:'rtm',    ciudad:'Bogota',     vendedor:'Maria Lopez',  notifFecha:null,valorSoat:0,valorSvc:20000},
+  {id:3, nombre:'Juan Martinez',   placa:'DEF789',fecha:'2026-04-28',celular:'3204567890',servicio:'soat',   ciudad:'Medellin',   vendedor:'Juan Gomez',   notifFecha:null,valorSoat:210000,valorSvc:20000},
+  {id:4, nombre:'Ana Lopez',       placa:'GHI012',fecha:'2026-07-15',celular:'3156789012',servicio:'seguros',ciudad:'Cali',       vendedor:'Carlos Perez', notifFecha:null,valorSoat:0,valorSvc:20000},
+  {id:5, nombre:'Pedro Sanchez',   placa:'JKL345',fecha:'2025-11-01',celular:'3012345678',servicio:'poliza', ciudad:'Barranquilla',vendedor:'Ana Martinez', notifFecha:null,valorSoat:0,valorSvc:20000},
+  {id:6, nombre:'Luis Perez',      placa:'MNO678',fecha:'2026-04-20',celular:'3145678901',servicio:'soat',   ciudad:'Medellin',   vendedor:'Maria Lopez',  notifFecha:'2026-04-14',valorSoat:195000,valorSvc:20000},
+  {id:7, nombre:'Sofia Torres',    placa:'PQR901',fecha:'2026-04-05',celular:'3201234567',servicio:'rtm',    ciudad:'Bogota',     vendedor:'Juan Gomez',   notifFecha:'2026-04-14',valorSoat:0,valorSvc:20000},
+  {id:8, nombre:'Andres Mora',     placa:'STU234',fecha:'2026-04-18',celular:'3109876543',servicio:'soat',   ciudad:'Pereira',    vendedor:'Carlos Perez', notifFecha:null,valorSoat:175000,valorSvc:20000},
+  {id:9, nombre:'Camila Rios',     placa:'VWX567',fecha:'2026-06-10',celular:'3187654321',servicio:'seguros',ciudad:'Manizales',  vendedor:'Ana Martinez', notifFecha:null,valorSoat:0,valorSvc:20000},
+  {id:10,nombre:'Jorge Vargas',    placa:'YZA890',fecha:'2025-12-15',celular:'3165432109',servicio:'poliza', ciudad:'Cali',       vendedor:'Juan Gomez',   notifFecha:null,valorSoat:0,valorSvc:20000},
+  {id:11,nombre:'Diana Castro',    placa:'BCD123',fecha:'2026-04-25',celular:'3143210987',servicio:'soat',   ciudad:'Medellin',   vendedor:'Maria Lopez',  notifFecha:null,valorSoat:220000,valorSvc:20000},
+  {id:12,nombre:'Felipe Ruiz',     placa:'EFG456',fecha:'2026-08-05',celular:'3121098765',servicio:'rtm',    ciudad:'Cartagena',  vendedor:'Carlos Perez', notifFecha:null,valorSoat:0,valorSvc:20000},
+];
+
+function load(k,d){try{return JSON.parse(localStorage.getItem(k))||d;}catch(e){return d;}}
+function save(k,v){try{localStorage.setItem(k,JSON.stringify(v));}catch(e){}}
+
+let servicios=load(SK_SVC,DEMO_SVC);
+let ciudades =load(SK_CIT,DEMO_CIT);
+let vendedores=load(SK_VEN,DEMO_VEN);
+let clientes  =load(SK,DEMO_C);
+let nextId    =Math.max(0,...clientes.map(c=>c.id))+1;
+let editId=null, filtroSvc='', tabActual='todos', sortCol='fecha', sortAsc=true;
+let cfgTemp={svc:[],cit:[],ven:[]};
+let importPending=[];
+
+// ── Helpers ───────────────────────────────────────────────────────────────────
+const getSvc=id=>servicios.find(s=>s.id===id)||{nombre:'—',color:'#9ca3af'};
+function calcEstado(f){const d=Math.round((new Date(f+'T00:00:00')-hoy)/86400000);return{est:d<0?'VENCIDO':d<=30?'PROXIMO':'ACTIVO',dias:d};}
+// ── Maestro de mensajes ───────────────────────────────────────────────────────
+const SK_MSG='crm_v6_msg';
+
+const MSGS_DEFAULT={
+  VENCIDO:{
+    modo:'auto',
+    texto:'Hola {nombre}, su {servicio} para la placa {placa} vencio el {fecha}. Renovelo pronto para evitar sanciones.'
+  },
+  PROXIMO:{
+    modo:'auto',
+    texto:'Hola {nombre}, su {servicio} para la placa {placa} vence el {fecha} (en {dias} dias). Renovelo a tiempo!'
+  },
+  ACTIVO:{
+    modo:'auto',
+    texto:'Hola {nombre}, su {servicio} para la placa {placa} esta vigente hasta el {fecha}. Gracias!'
+  }
+};
+
+let mensajes=load(SK_MSG,JSON.parse(JSON.stringify(MSGS_DEFAULT)));
+let msgTabActual='VENCIDO';
+let msgTemp={};
+
+function applyVars(tpl,c,dias){
+  const fd=new Date(c.fecha+'T00:00:00').toLocaleDateString('es-CO',{day:'2-digit',month:'2-digit',year:'numeric'});
+  return tpl
+    .replace(/\{nombre\}/g,c.nombre||'')
+    .replace(/\{placa\}/g,c.placa||'')
+    .replace(/\{servicio\}/g,getSvc(c.servicio).nombre)
+    .replace(/\{fecha\}/g,fd)
+    .replace(/\{dias\}/g,dias<0?Math.abs(dias)+' dias vencido':dias+' dias')
+    .replace(/\{ciudad\}/g,c.ciudad||'')
+    .replace(/\{vendedor\}/g,c.vendedor||'')
+    .replace(/\{valor_soat\}/g,c.valorSoat?'$'+Number(c.valorSoat).toLocaleString('es-CO'):'sin valor')
+    .replace(/\{valor_svc\}/g,'$'+Number(c.valorSvc||20000).toLocaleString('es-CO'))
+    .replace(/\{total\}/g,'$'+Number((c.valorSoat||0)+(c.valorSvc||20000)).toLocaleString('es-CO'));
+}
+
+function genMsg(c,est,dias){
+  const cfg=mensajes[est]||MSGS_DEFAULT[est];
+  if(cfg.modo==='auto'){
+    const fd=new Date(c.fecha+'T00:00:00').toLocaleDateString('es-CO',{day:'2-digit',month:'2-digit',year:'numeric'});
+    const sn=getSvc(c.servicio).nombre;
+    if(est==='VENCIDO') return `Hola ${c.nombre}, su ${sn} para la placa ${c.placa} vencio el ${fd}. Renovelo pronto para evitar sanciones.`;
+    if(est==='PROXIMO') return `Hola ${c.nombre}, su ${sn} para la placa ${c.placa} vence el ${fd} (en ${dias} dias). Renovelo a tiempo!`;
+    return `Hola ${c.nombre}, su ${sn} para la placa ${c.placa} esta vigente hasta el ${fd}. Gracias!`;
+  }
+  return applyVars(cfg.texto,c,dias);
+}
+
+const DEMO_CLIENTE_PREVIEW={id:0,nombre:'Carlos Rodriguez',placa:'ABC123',fecha:new Date(Date.now()+15*86400000).toISOString().slice(0,10),celular:'3001234567',servicio:'soat',ciudad:'Medellin',vendedor:'Juan Gomez',notifFecha:null,valorSoat:195000,valorSvc:20000};
+
+function abrirMensajes(){
+  msgTemp=JSON.parse(JSON.stringify(mensajes));
+  renderMsgEditor();
+  document.getElementById('modal-mensajes').style.display='block';
+}
+
+function setMsgTab(est){
+  msgTabActual=est;
+  document.querySelectorAll('.msg-tab').forEach((el,i)=>el.classList.toggle('active',['VENCIDO','PROXIMO','ACTIVO'][i]===est));
+  renderMsgEditor();
+}
+
+function renderMsgEditor(){
+  const cfg=msgTemp[msgTabActual];
+  const isAuto=cfg.modo==='auto';
+  const est=msgTabActual;
+  const labels={VENCIDO:'Mensaje para clientes VENCIDOS',PROXIMO:'Mensaje para clientes PROXIMOS a vencer',ACTIVO:'Mensaje para clientes ACTIVOS'};
+  const colors={VENCIDO:'var(--vencido)',PROXIMO:'var(--proximo)',ACTIVO:'var(--activo)'};
+  const bgs={VENCIDO:'var(--vencido-bg)',PROXIMO:'var(--proximo-bg)',ACTIVO:'var(--activo-bg)'};
+
+  // preview con cliente demo
+  const {dias}=calcEstado(DEMO_CLIENTE_PREVIEW.fecha);
+  const previewAuto=(()=>{
+    const fd=new Date(DEMO_CLIENTE_PREVIEW.fecha+'T00:00:00').toLocaleDateString('es-CO',{day:'2-digit',month:'2-digit',year:'numeric'});
+    if(est==='VENCIDO') return `Hola Carlos Rodriguez, su SOAT para la placa ABC123 vencio el ${fd}. Renovelo pronto para evitar sanciones.`;
+    if(est==='PROXIMO') return `Hola Carlos Rodriguez, su SOAT para la placa ABC123 vence el ${fd} (en ${dias} dias). Renovelo a tiempo!`;
+    return `Hola Carlos Rodriguez, su SOAT para la placa ABC123 esta vigente hasta el ${fd}. Gracias!`;
+  })();
+  const previewCustom=applyVars(cfg.texto,DEMO_CLIENTE_PREVIEW,dias);
+
+  document.getElementById('msg-editor').innerHTML=`
+    <div class="msg-card">
+      <div class="msg-card-head">
+        <h4 style="color:${colors[est]}">${labels[est]}</h4>
+        <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
+          <div class="msg-mode-toggle">
+            <label><input type="radio" name="msg-mode-${est}" value="auto" ${isAuto?'checked':''} onchange="setMsgModo('auto')"> Automatico</label>
+            <label><input type="radio" name="msg-mode-${est}" value="custom" ${!isAuto?'checked':''} onchange="setMsgModo('custom')"> Personalizado</label>
+          </div>
+          <span class="${isAuto?'msg-badge-auto':'msg-badge-custom'}" id="msg-mode-badge">${isAuto?'Automatico':'Personalizado'}</span>
+          ${!isAuto?`<button class="msg-reset-btn" onclick="resetMsg('${est}')">Restaurar automatico</button>`:''}
+        </div>
+      </div>
+
+      ${isAuto?`
+        <div style="font-size:12px;color:var(--muted);padding:8px 10px;background:${bgs[est]};border-radius:var(--rs);border:1px solid ${colors[est]}33;line-height:1.6">
+          El mensaje se genera automaticamente con los datos del cliente. Cambia a <b>Personalizado</b> para editarlo.
+        </div>
+      `:`
+        <textarea class="msg-textarea" id="msg-txt-${est}" oninput="actualizarPreview()">${cfg.texto}</textarea>
+        <div style="font-size:11px;color:var(--muted);margin-top:5px">Clic en una variable de abajo para copiarla e insertarla en el mensaje.</div>
+      `}
+
+      <div style="margin-top:10px">
+        <div class="msg-preview-label">Vista previa con cliente de ejemplo</div>
+        <div class="msg-preview-box" id="msg-preview-${est}">${isAuto?previewAuto:previewCustom}</div>
+      </div>
+    </div>`;
+}
+
+function setMsgModo(modo){
+  msgTemp[msgTabActual].modo=modo;
+  renderMsgEditor();
+}
+
+function actualizarPreview(){
+  const est=msgTabActual;
+  const ta=document.getElementById(`msg-txt-${est}`);
+  if(!ta)return;
+  msgTemp[est].texto=ta.value;
+  const{dias}=calcEstado(DEMO_CLIENTE_PREVIEW.fecha);
+  document.getElementById(`msg-preview-${est}`).textContent=applyVars(ta.value,DEMO_CLIENTE_PREVIEW,dias);
+}
+
+function resetMsg(est){
+  if(!confirm('Restaurar el mensaje automatico por defecto?'))return;
+  msgTemp[est]=JSON.parse(JSON.stringify(MSGS_DEFAULT[est]));
+  renderMsgEditor();
+}
+
+function copiarVar(v){
+  navigator.clipboard?.writeText(v).catch(()=>{});
+  // Intentar insertar en el textarea activo
+  const ta=document.getElementById(`msg-txt-${msgTabActual}`);
+  if(ta&&document.activeElement===ta){
+    const s=ta.selectionStart,e=ta.selectionEnd;
+    ta.value=ta.value.slice(0,s)+v+ta.value.slice(e);
+    ta.selectionStart=ta.selectionEnd=s+v.length;
+    ta.focus();
+    actualizarPreview();
+  }else{
+    toast('Variable copiada: '+v);
+  }
+}
+
+function guardarMensajes(){
+  mensajes=JSON.parse(JSON.stringify(msgTemp));
+  save(SK_MSG,mensajes);
+  document.getElementById('modal-mensajes').style.display='none';
+  render();
+  toast('Mensajes guardados correctamente');
+}
+
+const waLink=(cel,msg)=>'https://wa.me/57'+cel+'?text='+encodeURIComponent(msg);
+const WA_SVG=`<svg viewBox="0 0 24 24" fill="currentColor"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"/></svg>`;
+
+// ── Poblar selects filtros ─────────────────────────────────────────────────────
+function poblarFiltros(){
+  const fCit=document.getElementById('filtro-ciudad');
+  const fVen=document.getElementById('filtro-vendedor');
+  const cvCit=fCit.value, cvVen=fVen.value;
+  fCit.innerHTML='<option value="">Todas las ciudades</option>'+ciudades.map(c=>`<option value="${c}"${c===cvCit?' selected':''}>${c}</option>`).join('');
+  fVen.innerHTML='<option value="">Todos los vendedores</option>'+vendedores.map(v=>`<option value="${v}"${v===cvVen?' selected':''}>${v}</option>`).join('');
+}
+
+// ── Tags servicios ────────────────────────────────────────────────────────────
+function renderTags(){
+  const wrap=document.getElementById('svc-tags-wrap');
+  const cnt={};clientes.forEach(c=>{cnt[c.servicio||'']=(cnt[c.servicio||'']||0)+1;});
+  const usados=servicios.filter(s=>cnt[s.id]);
+  if(!usados.length){wrap.innerHTML='';return;}
+  wrap.innerHTML=`<div class="svc-tags">
+    <span class="tag${!filtroSvc?' active':''}" onclick="setFSvc('')"><span class="cnt">${clientes.length}</span> Todos</span>
+    ${usados.map(s=>`<span class="tag${filtroSvc===s.id?' active':''}" onclick="setFSvc('${s.id}')"><span class="dot" style="background:${s.color}"></span>${s.nombre}<span class="cnt">${cnt[s.id]||0}</span></span>`).join('')}
+  </div>`;
+}
+function setFSvc(id){filtroSvc=id;paginaActual=1;renderTags();render();}
+
+// ── Tabs ──────────────────────────────────────────────────────────────────────
+function setTab(t){paginaActual=1;
+  tabActual=t;
+  document.querySelectorAll('.tab').forEach((el,i)=>el.classList.toggle('active',['todos','pendiente','notificado'][i]===t));
+  render();
+}
+
+// ── Sort ──────────────────────────────────────────────────────────────────────
+function sortBy(col){if(sortCol===col)sortAsc=!sortAsc;else{sortCol=col;sortAsc=true;}render();}
+
+// ── getVisible ────────────────────────────────────────────────────────────────
+function getVisible(){
+  const busq=document.getElementById('buscar').value.toLowerCase();
+  const fEst=document.getElementById('filtro-estado').value;
+  const fCit=document.getElementById('filtro-ciudad').value;
+  const fVen=document.getElementById('filtro-vendedor').value;
+  const fMes=document.getElementById('filtro-mes').value;
+  const fDia=document.getElementById('filtro-dia').value;
+  let arr=clientes.filter(c=>{
+    const{est}=calcEstado(c.fecha);
+    return (!busq||(c.nombre.toLowerCase().includes(busq)||c.placa.toLowerCase().includes(busq)))
+      &&(!fEst||est===fEst)
+      &&(!filtroSvc||c.servicio===filtroSvc)
+      &&(!fCit||c.ciudad===fCit)
+      &&(!fVen||c.vendedor===fVen)
+      &&(!fMes||c.fecha.startsWith(fMes))
+      &&(!fDia||c.fecha===fDia)
+      &&(tabActual==='todos'||(tabActual==='pendiente'&&!c.notifFecha)||(tabActual==='notificado'&&c.notifFecha));
+  });
+  return arr.sort((a,b)=>{
+    let va,vb;
+    if(sortCol==='nombre'){va=a.nombre.toLowerCase();vb=b.nombre.toLowerCase();}
+    else if(sortCol==='fecha'){va=a.fecha;vb=b.fecha;}
+    else{va=calcEstado(a.fecha).dias;vb=calcEstado(b.fecha).dias;}
+    return sortAsc?(va>vb?1:va<vb?-1:0):(va<vb?1:va>vb?-1:0);
+  });
+}
+
+// ── Render tabla ──────────────────────────────────────────────────────────────
+function render(){
+  const stats={ACTIVO:0,PROXIMO:0,VENCIDO:0};
+  let notifCnt=0;
+  clientes.forEach(c=>{stats[calcEstado(c.fecha).est]++;if(c.notifFecha===hoyStr)notifCnt++;});
+  const totalVal=clientes.reduce((sum,c)=>(c.valorSoat||0)+(c.valorSvc||0)+sum,0);
+  document.getElementById('s-total').textContent=clientes.length;
+  document.getElementById('s-activo').textContent=stats.ACTIVO;
+  document.getElementById('s-proximo').textContent=stats.PROXIMO;
+  document.getElementById('s-vencido').textContent=stats.VENCIDO;
+  document.getElementById('s-notif').textContent=notifCnt;
+  document.getElementById('s-total-val').textContent='$'+totalVal.toLocaleString('es-CO');
+
+  paginaActual=1; // reset to page 1 when filters change
+  const visible=getVisible();
+  renderTabla(visible);
+}
+
+function renderTabla(visible){
+  const tbody=document.getElementById('tabla-body');
+  if(!visible.length){
+    tbody.innerHTML=`<tr><td colspan="14" class="empty">No hay clientes que coincidan con los filtros</td></tr>`;
+    renderPaginacion(0);return;
+  }
+
+  // Slice for current page
+  const inicio=(paginaActual-1)*POR_PAGINA;
+  const pagina=visible.slice(inicio, inicio+POR_PAGINA);
+
+  const totalVisible=visible.reduce((s,c)=>(c.valorSoat||0)+(c.valorSvc||20000)+s,0);
+  tbody.innerHTML=pagina.map((c,i)=>{
+  const iGlobal=inicio+i;
+    const{est,dias}=calcEstado(c.fecha);
+    const msg=genMsg(c,est,dias);
+    const link=c.celular?waLink(c.celular,msg):'';
+    const svc=getSvc(c.servicio);
+    const fd=new Date(c.fecha+'T00:00:00').toLocaleDateString('es-CO',{day:'2-digit',month:'2-digit',year:'numeric'});
+    const notifHoy=c.notifFecha===hoyStr;
+    const notifBadge=c.notifFecha
+      ?`<span class="notif-badge notif-si">${notifHoy?'Hoy':c.notifFecha}</span>`
+      :`<span class="notif-badge notif-no">Pendiente</span>`;
+    const waBtn=link
+      ?`<button class="btn-wa-row${notifHoy?' sent':''}" onclick="enviarWA(${c.id},'${link}')">${WA_SVG} ${notifHoy?'Reenviar':'Enviar'}</button>`
+      :`<button class="btn-wa-row" disabled>${WA_SVG} Sin num.</button>`;
+    return`<tr>
+      <td style="color:var(--muted);font-size:11px">${iGlobal+1}</td>
+      <td class="nombre">${c.nombre}</td>
+      <td class="mono">${c.placa}</td>
+      <td><span class="svc-badge" style="background:${svc.color}18;color:${svc.color};border:1px solid ${svc.color}44"><span class="svc-dot" style="background:${svc.color}"></span>${svc.nombre}</span></td>
+      <td><span class="city-badge">${c.ciudad||'—'}</span></td>
+      <td><span class="seller-badge">${c.vendedor||'—'}</span></td>
+      <td style="font-size:12.5px">${fd}</td>
+      <td><span class="badge b-${est.toLowerCase()}">${est}</span></td>
+      <td class="${dias<0?'d-bad':dias<=30?'d-warn':'d-ok'}">${dias<0?`-${Math.abs(dias)}d`:`${dias}d`}</td>
+      <td class="mono">${c.celular||'—'}</td>
+      <td>${notifBadge}</td>
+      <td><div class="msg-prev" title="${msg}">${msg}</div></td>
+      <td>${waBtn}</td>
+      <td><div class="row-acts">
+        <button class="ic-btn runt" onclick="abrirRUNTp('${c.placa}')" title="RUNT">R</button>
+        <button class="ic-btn" onclick="editarC(${c.id})" title="Editar">✎</button>
+        <button class="ic-btn del" onclick="eliminarC(${c.id})" title="Eliminar">✕</button>
+      </div></td>
+    </tr>`;
+  }).join('')+`<tr class="total-row">
+    <td colspan="10" style="text-align:right;font-size:12px;color:var(--muted);padding-right:12px">TOTAL ${visible.length} clientes — Recaudo: <span style="color:var(--activo);font-weight:600">$${totalVisible.toLocaleString('es-CO')}</span></td>
+    <td colspan="4"></td>
+  </tr>`;
+  renderPaginacion(visible.length);
+}
+
+// ── WA + notificacion ─────────────────────────────────────────────────────────
+function enviarWA(id,link){
+  window.open(link,'_blank');
+  const c=clientes.find(x=>x.id===id);if(c){c.notifFecha=hoyStr;save(SK,clientes);render();}
+}
+function notificarVencidos(){
+  const v=clientes.filter(c=>calcEstado(c.fecha).est==='VENCIDO'&&c.celular);
+  if(!v.length){toast('No hay vencidos con numero');return;}
+  let i=0;
+  function sig(){if(i>=v.length){v.forEach(c=>c.notifFecha=hoyStr);save(SK,clientes);render();toast(`${v.length} mensajes enviados`);return;}
+    const c=v[i++];const{est,dias}=calcEstado(c.fecha);window.open(waLink(c.celular,genMsg(c,est,dias)),'_blank');setTimeout(sig,700);}
+  sig();
+}
+
+// ── CRUD clientes ─────────────────────────────────────────────────────────────
+function poblarSelectsModal(c){
+  document.getElementById('f-servicio').innerHTML=servicios.map(s=>`<option value="${s.id}"${s.id===(c?.servicio||servicios[0]?.id)?'  selected':''}>${s.nombre}</option>`).join('');
+  document.getElementById('f-ciudad').innerHTML  ='<option value="">Sin ciudad</option>'+ciudades.map(v=>`<option value="${v}"${v===(c?.ciudad||'')?'  selected':''}>${v}</option>`).join('');
+  document.getElementById('f-vendedor').innerHTML='<option value="">Sin vendedor</option>'+vendedores.map(v=>`<option value="${v}"${v===(c?.vendedor||'')?'  selected':''}>${v}</option>`).join('');
+  document.getElementById('f-valor-soat').value=c?.valorSoat||0;
+  document.getElementById('f-valor-svc').value=c?.valorSvc||20000;
+}
+function abrirModal(id){
+  editId=id||null;const c=id?clientes.find(x=>x.id===id):null;
+  document.getElementById('modal-titulo').textContent=c?'Editar cliente':'Nuevo cliente';
+  document.getElementById('f-nombre').value=c?.nombre||'';
+  document.getElementById('f-placa').value=c?.placa||'';
+  document.getElementById('f-fecha').value=c?.fecha||'';
+  document.getElementById('f-celular').value=c?.celular||'';
+  poblarSelectsModal(c);
+  document.getElementById('modal').style.display='block';
+  setTimeout(()=>document.getElementById('f-nombre').focus(),50);
+}
+function co(id,e){if(!e||e.target.classList.contains('overlay'))document.getElementById(id).style.display='none';}
+function editarC(id){abrirModal(id);}
+function eliminarC(id){
+  if(!confirm('Eliminar este cliente?'))return;
+  clientes=clientes.filter(c=>c.id!==id);save(SK,clientes);renderTags();render();toast('Cliente eliminado');
+}
+function guardarCliente(){
+  const nombre=document.getElementById('f-nombre').value.trim();
+  const placa=document.getElementById('f-placa').value.trim().toUpperCase().replace(/[^A-Z0-9]/g,'');
+  const fecha=document.getElementById('f-fecha').value;
+  const celular=document.getElementById('f-celular').value.trim();
+  const servicio=document.getElementById('f-servicio').value;
+  const ciudad=document.getElementById('f-ciudad').value;
+  const vendedor=document.getElementById('f-vendedor').value;
+  const valorSoat=parseFloat(document.getElementById('f-valor-soat').value)||0;
+  const valorSvc=parseFloat(document.getElementById('f-valor-svc').value)||20000;
+  if(!nombre||!placa||!fecha){alert('Complete nombre, placa y fecha.');return;}
+  if(editId){const c=clientes.find(x=>x.id===editId);Object.assign(c,{nombre,placa,fecha,celular,servicio,ciudad,vendedor,valorSoat,valorSvc});}
+  else clientes.push({id:nextId++,nombre,placa,fecha,celular,servicio,ciudad,vendedor,valorSoat,valorSvc,notifFecha:null});
+  save(SK,clientes);document.getElementById('modal').style.display='none';
+  renderTags();render();poblarFiltros();toast(editId?'Cliente actualizado':'Cliente agregado');
+}
+
+// ── RUNT ──────────────────────────────────────────────────────────────────────
+function togglePanel(id){document.getElementById(id).classList.toggle('open');}
+function abrirRUNT(){const p=document.getElementById('runt-placa').value.trim().toUpperCase().replace(/[^A-Z0-9]/g,'');if(!p){alert('Ingresa una placa.');return;}window.open('https://www.runt.gov.co/consultaCiudadana/#/consultaVehiculo','_blank');toast('RUNT abierto — placa: '+p);}
+function abrirRUNTp(placa){document.getElementById('runt-placa').value=placa;document.getElementById('runt-panel').classList.add('open');window.open('https://www.runt.gov.co/consultaCiudadana/#/consultaVehiculo','_blank');toast('RUNT abierto: '+placa);}
+
+// ── Configuracion ─────────────────────────────────────────────────────────────
+function abrirConfig(){
+  cfgTemp={svc:servicios.map(s=>({...s})),cit:[...ciudades],ven:[...vendedores]};
+  renderCfgSvc();renderCfgList('ciudad');renderCfgList('vendedor');
+  document.getElementById('modal-config').style.display='block';
+}
+function renderCfgSvc(){
+  document.getElementById('cfg-svc-list').innerHTML=cfgTemp.svc.map((s,i)=>`
+    <div class="cfg-item">
+      <input type="color" value="${s.color}" onchange="cfgTemp.svc[${i}].color=this.value">
+      <input type="text" value="${s.nombre}" oninput="cfgTemp.svc[${i}].nombre=this.value">
+      <button class="ic-btn del" onclick="cfgTemp.svc.splice(${i},1);renderCfgSvc()">✕</button>
+    </div>`).join('');
+}
+function renderCfgList(tipo){
+  const arr=tipo==='ciudad'?cfgTemp.cit:cfgTemp.ven;
+  document.getElementById(`cfg-${tipo}-list`).innerHTML=arr.map((v,i)=>`
+    <div class="cfg-item">
+      <input type="text" value="${v}" oninput="${tipo==='ciudad'?'cfgTemp.cit':'cfgTemp.ven'}[${i}]=this.value">
+      <button class="ic-btn del" onclick="${tipo==='ciudad'?'cfgTemp.cit':'cfgTemp.ven'}.splice(${i},1);renderCfgList('${tipo}')">✕</button>
+    </div>`).join('');
+}
+function agregarItem(tipo){
+  if(tipo==='svc'){
+    const n=document.getElementById('new-svc-nombre').value.trim();
+    const c=document.getElementById('new-svc-color').value;
+    if(!n)return;cfgTemp.svc.push({id:'svc_'+Date.now(),nombre:n,color:c});
+    document.getElementById('new-svc-nombre').value='';renderCfgSvc();
+  }else if(tipo==='ciudad'){
+    const v=document.getElementById('new-ciudad').value.trim();
+    if(!v)return;cfgTemp.cit.push(v);document.getElementById('new-ciudad').value='';renderCfgList('ciudad');
+  }else{
+    const v=document.getElementById('new-vendedor').value.trim();
+    if(!v)return;cfgTemp.ven.push(v);document.getElementById('new-vendedor').value='';renderCfgList('vendedor');
+  }
+}
+function guardarConfig(){
+  servicios=cfgTemp.svc.map(s=>({...s}));
+  ciudades=cfgTemp.cit.filter(Boolean);
+  vendedores=cfgTemp.ven.filter(Boolean);
+  save(SK_SVC,servicios);save(SK_CIT,ciudades);save(SK_VEN,vendedores);
+  document.getElementById('modal-config').style.display='none';
+  renderTags();poblarFiltros();render();toast('Configuracion guardada');
+}
+
+// ── Import / Export ───────────────────────────────────────────────────────────
+function dragOver(e){e.preventDefault();document.getElementById('drop-zone').classList.add('dragover');}
+function dragLeave(){document.getElementById('drop-zone').classList.remove('dragover');}
+function dropFile(e){e.preventDefault();dragLeave();const f=e.dataTransfer.files[0];if(f)procesarArchivo(f);}
+function leerArchivo(e){const f=e.target.files[0];if(f)procesarArchivo(f);e.target.value='';}
+const nm=s=>s.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').trim();
+
+function procesarArchivo(file){
+  const reader=new FileReader();
+  reader.onload=function(e){
+    try{
+      const wb=XLSX.read(e.target.result,{type:'array',cellDates:true});
+      const ws=wb.Sheets[wb.SheetNames[0]];
+      const rows=XLSX.utils.sheet_to_json(ws,{raw:false,dateNF:'YYYY-MM-DD'});
+      if(!rows.length){alert('Archivo vacio.');return;}
+      const parsed=rows.map(row=>{
+        const r={};Object.keys(row).forEach(k=>{r[nm(k)]=String(row[k]||'').trim();});
+        const nombre=r['nombre']||r['nombre del cliente']||r['cliente']||'';
+        const placa=(r['placa']||'').toUpperCase().replace(/[^A-Z0-9]/g,'');
+        const celular=r['celular']||r['telefono']||r['cel']||'';
+        const svcNom=(r['servicio']||r['tipo de servicio']||'').toLowerCase();
+        const servicio=servicios.find(s=>s.nombre.toLowerCase()===svcNom)?.id||servicios[0]?.id||'';
+        const ciudad=r['ciudad']||r['municipio']||'';
+        const vendedor=r['vendedor']||r['asesor']||'';
+        const valorSoat=parseFloat((r['valor_soat']||r['valor soat']||r['soat']||'0').toString().replace(/[^0-9.]/g,''))||0;
+        const valorSvc=parseFloat((r['valor_servicio']||r['valor servicio']||r['valor svc']||r['servicio $']||'20000').toString().replace(/[^0-9.]/g,''))||20000;
+        let fecha=r['fecha']||r['fecha de vencimiento']||r['vencimiento']||'';
+        if(fecha&&fecha.includes('/')){const p=fecha.split('/');if(p.length===3)fecha=p[2].length===4?`${p[2]}-${p[1].padStart(2,'0')}-${p[0].padStart(2,'0')}`:`${p[0]}-${p[1].padStart(2,'0')}-${p[2].padStart(2,'0')}`;}
+        return{nombre,placa,fecha,celular,servicio,ciudad,vendedor,valorSoat,valorSvc,notifFecha:null};
+      }).filter(r=>r.nombre&&r.placa&&r.fecha);
+      if(!parsed.length){alert('No se encontraron filas validas.');return;}
+      mostrarPreview(parsed);
+    }catch(err){alert('Error: '+err.message);}
+  };
+  reader.readAsArrayBuffer(file);
+}
+function mostrarPreview(rows){
+  importPending=rows;
+  const ya=rows.filter(r=>clientes.some(c=>c.placa===r.placa));
+  document.getElementById('import-info').innerHTML=`<b>${rows.length} clientes</b> encontrados.`+(ya.length?` <span style="color:var(--proximo)">${ya.length} duplicados seran actualizados.</span>`:'');
+  const w=document.getElementById('import-warn');
+  if(ya.length){w.textContent='Placas duplicadas: '+ya.map(r=>r.placa).join(', ');w.style.display='block';}else w.style.display='none';
+  document.getElementById('prev-table').innerHTML=`<table><thead><tr><th>Nombre</th><th>Placa</th><th>Fecha</th><th>Servicio</th><th>Ciudad</th><th>Vendedor</th><th>Valor SOAT</th><th>Valor Svc</th></tr></thead><tbody>${rows.slice(0,7).map(r=>`<tr><td>${r.nombre}</td><td class="mono">${r.placa}</td><td>${r.fecha}</td><td>${getSvc(r.servicio).nombre}</td><td>${r.ciudad||'—'}</td><td>${r.vendedor||'—'}</td><td>${r.valorSoat?'$'+Number(r.valorSoat).toLocaleString('es-CO'):'—'}</td><td>$${Number(r.valorSvc||20000).toLocaleString('es-CO')}</td></tr>`).join('')}${rows.length>7?`<tr><td colspan="8" style="text-align:center;color:var(--muted)">... y ${rows.length-7} mas</td></tr>`:''}</tbody></table>`;
+  document.getElementById('modal-import').style.display='block';
+}
+function confirmarImport(){
+  let n=0,a=0;
+  importPending.forEach(r=>{const ex=clientes.find(c=>c.placa===r.placa);if(ex){Object.assign(ex,r);a++;}else{clientes.push({id:nextId++,...r});n++;}});
+  save(SK,clientes);renderTags();poblarFiltros();render();
+  document.getElementById('modal-import').style.display='none';
+  toast(`Importados: ${n} nuevos, ${a} actualizados`);importPending=[];
+}
+function exportarExcel(modo){
+  let datos=modo==='todos'?clientes:modo==='vencidos'?clientes.filter(c=>['VENCIDO','PROXIMO'].includes(calcEstado(c.fecha).est)):getVisible();
+  if(!datos.length){toast('No hay datos para exportar');return;}
+  const rows=datos.map((c,i)=>{
+    const{est,dias}=calcEstado(c.fecha);
+    return{'N°':i+1,'Nombre':c.nombre,'Placa':c.placa,'Servicio':getSvc(c.servicio).nombre,
+      'Ciudad':c.ciudad||'','Vendedor':c.vendedor||'','Fecha Vencimiento':c.fecha,
+      'Estado':est,'Dias Restantes':dias,'Celular':c.celular||'',
+      'Valor SOAT':c.valorSoat||0,'Valor Servicio':c.valorSvc||20000,'Total':(c.valorSoat||0)+(c.valorSvc||20000),
+      'Notificado':c.notifFecha||'No','Link WhatsApp':c.celular?'https://wa.me/57'+c.celular:''};
+  });
+  const wb=XLSX.utils.book_new();const ws=XLSX.utils.json_to_sheet(rows);
+  ws['!cols']=[{wch:5},{wch:26},{wch:10},{wch:18},{wch:14},{wch:16},{wch:18},{wch:12},{wch:14},{wch:14},{wch:14},{wch:14},{wch:14},{wch:14},{wch:35}];
+  XLSX.utils.book_append_sheet(wb,ws,'Clientes');
+  XLSX.writeFile(wb,(modo==='todos'?'CRM_todos':modo==='vencidos'?'CRM_vencidos':'CRM_filtro')+'_'+hoyStr+'.xlsx');
+  toast(`Exportados ${rows.length} clientes`);
+}
+function descargarPlantilla(){
+  const rows=[
+    {nombre:'Carlos Rodriguez',placa:'ABC123',fecha:'2026-05-15',celular:'3001234567',servicio:'SOAT',ciudad:'Medellin',vendedor:'Juan Gomez',valor_soat:195000,valor_servicio:20000},
+    {nombre:'Maria Garcia',    placa:'XYZ456',fecha:'2026-06-20',celular:'3119876543',servicio:'Revision Tecnica',ciudad:'Bogota',vendedor:'Maria Lopez',valor_soat:0,valor_servicio:20000},
+    {nombre:'Ana Lopez',       placa:'GHI012',fecha:'2026-07-10',celular:'3156789012',servicio:'Seguro Todo Riesgo',ciudad:'Cali',vendedor:'Carlos Perez',valor_soat:0,valor_servicio:20000},
+  ];
+  const wb=XLSX.utils.book_new();const ws=XLSX.utils.json_to_sheet(rows);
+  ws['!cols']=[{wch:26},{wch:10},{wch:14},{wch:14},{wch:18},{wch:14},{wch:16},{wch:14},{wch:16}];
+  XLSX.utils.book_append_sheet(wb,ws,'Clientes');
+  XLSX.writeFile(wb,'Plantilla_CRM.xlsx');toast('Plantilla descargada');
+}
+
+// ── Paginacion ───────────────────────────────────────────────────────────────
+const POR_PAGINA = 20;
+let paginaActual = 1;
+
+function totalPaginas(total){ return Math.max(1, Math.ceil(total / POR_PAGINA)); }
+
+function renderPaginacion(totalVisible){
+  const infoEl = document.getElementById('pagination-info');
+  const btnsEl = document.getElementById('pagination-btns');
+  if(!infoEl || !btnsEl) return;
+
+  const total = totalPaginas(totalVisible);
+  if(paginaActual > total) paginaActual = total;
+
+  const inicio = (paginaActual-1)*POR_PAGINA+1;
+  const fin    = Math.min(paginaActual*POR_PAGINA, totalVisible);
+
+  // Info texto
+  infoEl.innerHTML =
+    totalVisible===0
+      ? 'Sin resultados'
+      : `Mostrando <b>${inicio}–${fin}</b> de <b>${totalVisible}</b> clientes · Pagina <b>${paginaActual}</b> de <b>${total}</b>`;
+
+  // Botones
+  const cont = btnsEl;
+  let btns = '';
+
+  // Anterior
+  btns += `<button class="pg-btn" onclick="irPagina(${paginaActual-1})" ${paginaActual===1?'disabled':''}>‹</button>`;
+
+  // Numeros de pagina (max 7 visibles)
+  const rango = paginasVisibles(paginaActual, total);
+  let prev = null;
+  for(const p of rango){
+    if(prev!==null && p-prev>1) btns += `<span style="padding:0 4px;color:var(--muted)">…</span>`;
+    btns += `<button class="pg-btn${p===paginaActual?' active':''}" onclick="irPagina(${p})">${p}</button>`;
+    prev = p;
+  }
+
+  // Siguiente
+  btns += `<button class="pg-btn" onclick="irPagina(${paginaActual+1})" ${paginaActual===total?'disabled':''}>›</button>`;
+
+  // Ir a pagina
+  btns += `<select class="pg-select" onchange="irPagina(parseInt(this.value))" title="Ir a pagina">
+    ${Array.from({length:total},(_,i)=>`<option value="${i+1}"${i+1===paginaActual?' selected':''}>Pag ${i+1}</option>`).join('')}
+  </select>`;
+
+  cont.innerHTML = btns;
+}
+
+function paginasVisibles(actual, total){
+  if(total<=7) return Array.from({length:total},(_,i)=>i+1);
+  const pages=new Set([1,total,actual]);
+  for(let d=1;d<=2;d++){if(actual-d>=1)pages.add(actual-d);if(actual+d<=total)pages.add(actual+d);}
+  return [...pages].sort((a,b)=>a-b);
+}
+
+function irPagina(p){
+  const vis = getVisible();
+  const total = totalPaginas(vis.length);
+  paginaActual = Math.max(1, Math.min(p, total));
+  renderTabla(vis);
+  document.querySelector('.tbl-card')?.scrollIntoView({behavior:'smooth',block:'nearest'});
+}
+
+// ── Copia y restauracion ──────────────────────────────────────────────────────
+const SK_HIST = 'crm_backup_hist';
+
+function getDatosCompletos(){
+  return{
+    version: 1,
+    fecha: new Date().toISOString(),
+    clientes, servicios, ciudades, vendedores, mensajes
+  };
+}
+
+function actualizarUltimaCopia(){
+  const el = document.getElementById('ultima-copia');
+  if(!el) return;
+  const hist = getHistorial();
+  el.textContent = hist.length ? new Date(hist[0].fecha).toLocaleString('es-CO') : 'Nunca';
+}
+
+function getHistorial(){
+  try{ return JSON.parse(localStorage.getItem(SK_HIST))||[]; }catch(e){ return []; }
+}
+
+function agregarHistorial(info){
+  const hist = getHistorial();
+  hist.unshift(info);
+  const recientes = hist.slice(0,10); // max 10 entradas
+  localStorage.setItem(SK_HIST, JSON.stringify(recientes));
+  renderHistorial();
+  actualizarUltimaCopia();
+}
+
+function renderHistorial(){
+  const el = document.getElementById('historial-copias');
+  if(!el) return;
+  const hist = getHistorial();
+  if(!hist.length){ el.innerHTML='<span style="color:var(--muted)">Sin copias registradas.</span>'; return; }
+  el.innerHTML = hist.map(h=>`
+    <div style="display:flex;align-items:center;justify-content:space-between;padding:6px 10px;background:var(--surface);border:1px solid var(--border);border-radius:var(--rs);margin-bottom:5px">
+      <div>
+        <span style="font-weight:500;color:var(--text)">${h.archivo}</span>
+        <span style="color:var(--muted);margin-left:8px">${new Date(h.fecha).toLocaleString('es-CO')}</span>
+      </div>
+      <span style="font-size:11px;color:var(--muted)">${h.clientes} clientes · ${Math.round(h.tamano/1024)}KB</span>
+    </div>`).join('');
+}
+
+function limpiarHistorial(){
+  if(!confirm('Limpiar el historial de copias?')) return;
+  localStorage.removeItem(SK_HIST);
+  renderHistorial();
+  actualizarUltimaCopia();
+  toast('Historial limpiado');
+}
+
+function crearCopia(){
+  const datos = getDatosCompletos();
+  const json = JSON.stringify(datos, null, 2);
+  const blob = new Blob([json], {type:'application/json'});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  const fecha = new Date().toISOString().slice(0,19).replace(/[T:]/g,'-');
+  const nombre = `CRM_backup_${fecha}.json`;
+  a.href = url; a.download = nombre;
+  document.body.appendChild(a); a.click();
+  document.body.removeChild(a); URL.revokeObjectURL(url);
+  agregarHistorial({archivo: nombre, fecha: new Date().toISOString(), clientes: clientes.length, tamano: json.length});
+  toast('Copia descargada: ' + nombre);
+}
+
+function restoreDragOver(e){ e.preventDefault(); document.getElementById('restore-drop').style.borderColor='var(--accent)'; }
+function restoreDragLeave(){ document.getElementById('restore-drop').style.borderColor='var(--border)'; }
+function restoreDropFile(e){ e.preventDefault(); restoreDragLeave(); const f=e.dataTransfer.files[0]; if(f) procesarRestauracion(f); }
+function restaurarCopia(e){ const f=e.target.files[0]; if(f) procesarRestauracion(f); e.target.value=''; }
+
+function procesarRestauracion(file){
+  if(!file.name.endsWith('.json')){ toast('Solo se aceptan archivos .json'); return; }
+  const reader = new FileReader();
+  reader.onload = function(e){
+    try{
+      const datos = JSON.parse(e.target.result);
+      // Validar estructura
+      if(!datos.clientes || !Array.isArray(datos.clientes)){
+        alert('Archivo invalido: no es una copia de seguridad del CRM.'); return;
+      }
+      const n = datos.clientes.length;
+      if(!confirm(`Restaurar copia del ${new Date(datos.fecha).toLocaleString('es-CO')}?
+
+Contiene ${n} clientes.
+
+Esta accion reemplazara TODOS los datos actuales.`)) return;
+
+      // Aplicar datos
+      clientes   = datos.clientes   || [];
+      servicios  = datos.servicios  || servicios;
+      ciudades   = datos.ciudades   || ciudades;
+      vendedores = datos.vendedores || vendedores;
+      mensajes   = datos.mensajes   || mensajes;
+      nextId     = Math.max(0,...clientes.map(c=>c.id||0))+1;
+
+      // Guardar en localStorage
+      save(SK, clientes);
+      save(SK_SVC, servicios);
+      save(SK_CIT, ciudades);
+      save(SK_VEN, vendedores);
+      save(SK_MSG, mensajes);
+
+      poblarFiltros(); renderTags(); render();
+      agregarHistorial({archivo:'[Restaurado] '+file.name, fecha:new Date().toISOString(), clientes:n, tamano:e.target.result.length});
+      document.getElementById('backup-panel').classList.remove('open');
+      toast(`Base de datos restaurada: ${n} clientes cargados`);
+    } catch(err){
+      alert('Error al leer el archivo: ' + err.message);
+    }
+  };
+  reader.readAsText(file);
+}
+
+// ── Misc ──────────────────────────────────────────────────────────────────────
+function limpiarF(id){document.getElementById(id).value='';render();}
+function toast(msg){const t=document.getElementById('toast');t.textContent=msg;t.classList.add('show');setTimeout(()=>t.classList.remove('show'),2600);}
+
+document.getElementById('buscar').addEventListener('input',render);
+document.getElementById('filtro-estado').addEventListener('change',render);
+document.getElementById('filtro-ciudad').addEventListener('change',render);
+document.getElementById('filtro-vendedor').addEventListener('change',render);
+document.getElementById('filtro-mes').addEventListener('change',render);
+document.getElementById('filtro-dia').addEventListener('change',render);
+document.addEventListener('keydown',e=>{if(e.key==='Escape')['modal','modal-config','modal-import','modal-mensajes'].forEach(id=>document.getElementById(id).style.display='none');});
+
+poblarFiltros();renderTags();render();renderHistorial();actualizarUltimaCopia();
+</script>
+</body>
+</html>
