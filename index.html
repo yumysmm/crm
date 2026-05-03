@@ -6,6 +6,7 @@
 <title>CRM — Gestión de Vencimientos</title>
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <style>
 :root{
   --bg:#f4f3ef;--surface:#fff;--surface2:#f9f8f5;--border:#e2e0d9;
@@ -556,7 +557,15 @@ tbody td{padding:8px 10px;vertical-align:middle}
 
 <script>
 // ── Storage keys ──────────────────────────────────────────────────────────────
-const SK='crm_v5', SK_SVC='crm_v5_svc', SK_CIT='crm_v5_cit', SK_VEN='crm_v5_ven';
+// ── Supabase config — reemplaza con tus datos ─────────────────────────────────
+const SUPABASE_URL  = 'TU_SUPABASE_URL';   // ej: https://xxxxx.supabase.co
+const SUPABASE_KEY  = 'TU_SUPABASE_ANON_KEY'; // clave anon/public
+
+const _sb = (SUPABASE_URL !== 'TU_SUPABASE_URL')
+  ? supabase.createClient(SUPABASE_URL, SUPABASE_KEY)
+  : null;
+
+const SK_HIST = 'crm_backup_hist'; // historial solo local
 const hoy=new Date(); hoy.setHours(0,0,0,0);
 const hoyStr=hoy.toISOString().slice(0,10);
 document.getElementById('fecha-hoy').textContent=hoy.toLocaleDateString('es-CO',{weekday:'long',day:'numeric',month:'long',year:'numeric'});
@@ -586,14 +595,47 @@ const DEMO_C=[
   {id:12,nombre:'Felipe Ruiz',     placa:'EFG456',fecha:'2026-08-05',celular:'3121098765',servicio:'rtm',    ciudad:'Cartagena',  vendedor:'Carlos Perez', notifFecha:null,valorSoat:0,valorSvc:20000},
 ];
 
-function load(k,d){try{return JSON.parse(localStorage.getItem(k))||d;}catch(e){return d;}}
-function save(k,v){try{localStorage.setItem(k,JSON.stringify(v));}catch(e){}}
+// ── Persistencia: Supabase (nube) + localStorage (fallback offline) ──────────
+function lsGet(k,d){try{return JSON.parse(localStorage.getItem(k))||d;}catch(e){return d;}}
+function lsSet(k,v){try{localStorage.setItem(k,JSON.stringify(v));}catch(e){}}
 
-let servicios=load(SK_SVC,DEMO_SVC);
-let ciudades =load(SK_CIT,DEMO_CIT);
-let vendedores=load(SK_VEN,DEMO_VEN);
-let clientes  =load(SK,DEMO_C);
-let nextId    =Math.max(0,...clientes.map(c=>c.id))+1;
+async function dbCargar(){
+  if(!_sb) return null;
+  try{
+    const {data,error} = await _sb.from('crm_config').select('*');
+    if(error||!data||!data.length) return null;
+    const cfg={};
+    data.forEach(r=>{ try{cfg[r.clave]=JSON.parse(r.valor);}catch(e){cfg[r.clave]=r.valor;} });
+    return cfg;
+  }catch(e){return null;}
+}
+
+async function dbGuardar(clave, valor){
+  if(!_sb) return;
+  try{
+    await _sb.from('crm_config').upsert({clave, valor:JSON.stringify(valor)},{onConflict:'clave'});
+  }catch(e){console.warn('Supabase write error:',e);}
+}
+
+async function guardarTodo(){
+  // Guardar en nube
+  await Promise.all([
+    dbGuardar('clientes',   clientes),
+    dbGuardar('servicios',  servicios),
+    dbGuardar('ciudades',   ciudades),
+    dbGuardar('vendedores', vendedores),
+    dbGuardar('mensajes',   mensajes),
+  ]);
+  // Guardar offline fallback
+  lsSet('crm_clientes',   clientes);
+  lsSet('crm_servicios',  servicios);
+  lsSet('crm_ciudades',   ciudades);
+  lsSet('crm_vendedores', vendedores);
+  lsSet('crm_mensajes',   mensajes);
+}
+
+let servicios=DEMO_SVC, ciudades=DEMO_CIT, vendedores=DEMO_VEN, clientes=DEMO_C;
+let nextId=Math.max(0,...clientes.map(c=>c.id))+1;
 let editId=null, filtroSvc='', tabActual='todos', sortCol='fecha', sortAsc=true;
 let cfgTemp={svc:[],cit:[],ven:[]};
 let importPending=[];
@@ -602,7 +644,7 @@ let importPending=[];
 const getSvc=id=>servicios.find(s=>s.id===id)||{nombre:'—',color:'#9ca3af'};
 function calcEstado(f){const d=Math.round((new Date(f+'T00:00:00')-hoy)/86400000);return{est:d<0?'VENCIDO':d<=30?'PROXIMO':'ACTIVO',dias:d};}
 // ── Maestro de mensajes ───────────────────────────────────────────────────────
-const SK_MSG='crm_v6_msg';
+const SK_MSG='crm_v6_msg'; // usado solo offline
 
 const MSGS_DEFAULT={
   VENCIDO:{
@@ -619,7 +661,7 @@ const MSGS_DEFAULT={
   }
 };
 
-let mensajes=load(SK_MSG,JSON.parse(JSON.stringify(MSGS_DEFAULT)));
+let mensajes=JSON.parse(JSON.stringify(MSGS_DEFAULT));
 let msgTabActual='VENCIDO';
 let msgTemp={};
 
@@ -749,7 +791,7 @@ function copiarVar(v){
 
 function guardarMensajes(){
   mensajes=JSON.parse(JSON.stringify(msgTemp));
-  save(SK_MSG,mensajes);
+  guardarTodo();
   document.getElementById('modal-mensajes').style.display='none';
   render();
   toast('Mensajes guardados correctamente');
@@ -892,13 +934,13 @@ function renderTabla(visible){
 // ── WA + notificacion ─────────────────────────────────────────────────────────
 function enviarWA(id,link){
   window.open(link,'_blank');
-  const c=clientes.find(x=>x.id===id);if(c){c.notifFecha=hoyStr;save(SK,clientes);render();}
+  const c=clientes.find(x=>x.id===id);if(c){c.notifFecha=hoyStr;guardarTodo();render();}
 }
 function notificarVencidos(){
   const v=clientes.filter(c=>calcEstado(c.fecha).est==='VENCIDO'&&c.celular);
   if(!v.length){toast('No hay vencidos con numero');return;}
   let i=0;
-  function sig(){if(i>=v.length){v.forEach(c=>c.notifFecha=hoyStr);save(SK,clientes);render();toast(`${v.length} mensajes enviados`);return;}
+  function sig(){if(i>=v.length){v.forEach(c=>c.notifFecha=hoyStr);guardarTodo();render();toast(`${v.length} mensajes enviados`);return;}
     const c=v[i++];const{est,dias}=calcEstado(c.fecha);window.open(waLink(c.celular,genMsg(c,est,dias)),'_blank');setTimeout(sig,700);}
   sig();
 }
@@ -926,7 +968,7 @@ function co(id,e){if(!e||e.target.classList.contains('overlay'))document.getElem
 function editarC(id){abrirModal(id);}
 function eliminarC(id){
   if(!confirm('Eliminar este cliente?'))return;
-  clientes=clientes.filter(c=>c.id!==id);save(SK,clientes);renderTags();render();toast('Cliente eliminado');
+  clientes=clientes.filter(c=>c.id!==id);guardarTodo();renderTags();render();toast('Cliente eliminado');
 }
 function guardarCliente(){
   const nombre=document.getElementById('f-nombre').value.trim();
@@ -941,7 +983,7 @@ function guardarCliente(){
   if(!nombre||!placa||!fecha){alert('Complete nombre, placa y fecha.');return;}
   if(editId){const c=clientes.find(x=>x.id===editId);Object.assign(c,{nombre,placa,fecha,celular,servicio,ciudad,vendedor,valorSoat,valorSvc});}
   else clientes.push({id:nextId++,nombre,placa,fecha,celular,servicio,ciudad,vendedor,valorSoat,valorSvc,notifFecha:null});
-  save(SK,clientes);document.getElementById('modal').style.display='none';
+  guardarTodo();document.getElementById('modal').style.display='none';
   renderTags();render();poblarFiltros();toast(editId?'Cliente actualizado':'Cliente agregado');
 }
 
@@ -990,7 +1032,7 @@ function guardarConfig(){
   servicios=cfgTemp.svc.map(s=>({...s}));
   ciudades=cfgTemp.cit.filter(Boolean);
   vendedores=cfgTemp.ven.filter(Boolean);
-  save(SK_SVC,servicios);save(SK_CIT,ciudades);save(SK_VEN,vendedores);
+  guardarTodo();
   document.getElementById('modal-config').style.display='none';
   renderTags();poblarFiltros();render();toast('Configuracion guardada');
 }
@@ -1043,7 +1085,7 @@ function mostrarPreview(rows){
 function confirmarImport(){
   let n=0,a=0;
   importPending.forEach(r=>{const ex=clientes.find(c=>c.placa===r.placa);if(ex){Object.assign(ex,r);a++;}else{clientes.push({id:nextId++,...r});n++;}});
-  save(SK,clientes);renderTags();poblarFiltros();render();
+  guardarTodo();renderTags();poblarFiltros();render();
   document.getElementById('modal-import').style.display='none';
   toast(`Importados: ${n} nuevos, ${a} actualizados`);importPending=[];
 }
@@ -1240,12 +1282,8 @@ Esta accion reemplazara TODOS los datos actuales.`)) return;
       mensajes   = datos.mensajes   || mensajes;
       nextId     = Math.max(0,...clientes.map(c=>c.id||0))+1;
 
-      // Guardar en localStorage
-      save(SK, clientes);
-      save(SK_SVC, servicios);
-      save(SK_CIT, ciudades);
-      save(SK_VEN, vendedores);
-      save(SK_MSG, mensajes);
+      // Guardar en nube y local
+      guardarTodo();
 
       poblarFiltros(); renderTags(); render();
       agregarHistorial({archivo:'[Restaurado] '+file.name, fecha:new Date().toISOString(), clientes:n, tamano:e.target.result.length});
@@ -1270,7 +1308,77 @@ document.getElementById('filtro-mes').addEventListener('change',render);
 document.getElementById('filtro-dia').addEventListener('change',render);
 document.addEventListener('keydown',e=>{if(e.key==='Escape')['modal','modal-config','modal-import','modal-mensajes'].forEach(id=>document.getElementById(id).style.display='none');});
 
-poblarFiltros();renderTags();render();renderHistorial();actualizarUltimaCopia();
+// ── Inicializacion desde Supabase ──────────────────────────────────────────────
+async function inicializar(){
+  // Indicador de estado
+  mostrarConexion('cargando');
+  document.getElementById('tabla-body').innerHTML=
+    '<tr><td colspan="14" class="empty" style="padding:32px">Cargando datos desde la nube...</td></tr>';
+
+  const cfg = await dbCargar();
+  if(cfg){
+    if(cfg.clientes)   { clientes   = cfg.clientes;   nextId=Math.max(0,...clientes.map(c=>c.id||0))+1; }
+    if(cfg.servicios)  servicios  = cfg.servicios;
+    if(cfg.ciudades)   ciudades   = cfg.ciudades;
+    if(cfg.vendedores) vendedores = cfg.vendedores;
+    if(cfg.mensajes)   mensajes   = cfg.mensajes;
+    // Cache offline
+    lsSet('crm_clientes',clientes); lsSet('crm_servicios',servicios);
+    lsSet('crm_ciudades',ciudades); lsSet('crm_vendedores',vendedores);
+    lsSet('crm_mensajes',mensajes);
+    mostrarConexion('online');
+  } else {
+    // Fallback offline
+    const lsC=lsGet('crm_clientes',null);
+    if(lsC){ clientes=lsC; nextId=Math.max(0,...clientes.map(c=>c.id||0))+1; }
+    const lsS=lsGet('crm_servicios',null); if(lsS) servicios=lsS;
+    const lsD=lsGet('crm_ciudades',null);  if(lsD) ciudades=lsD;
+    const lsV=lsGet('crm_vendedores',null);if(lsV) vendedores=lsV;
+    const lsM=lsGet('crm_mensajes',null);  if(lsM) mensajes=lsM;
+    mostrarConexion(_sb ? 'error' : 'config');
+  }
+
+  poblarFiltros(); renderTags(); render(); renderHistorial(); actualizarUltimaCopia();
+
+  // Auto-refresh cada 20 segundos para ver cambios de otros usuarios
+  if(_sb){
+    setInterval(async()=>{
+      const d=await dbCargar();
+      if(d){
+        if(d.clientes){clientes=d.clientes;nextId=Math.max(0,...clientes.map(c=>c.id||0))+1;}
+        if(d.servicios)servicios=d.servicios;
+        if(d.ciudades)ciudades=d.ciudades;
+        if(d.vendedores)vendedores=d.vendedores;
+        if(d.mensajes)mensajes=d.mensajes;
+        poblarFiltros();renderTags();render();
+        mostrarConexion('online');
+      }
+    },20000);
+  }
+}
+
+function mostrarConexion(estado){
+  let el=document.getElementById('conn-bar');
+  if(!el){
+    el=document.createElement('div');
+    el.id='conn-bar';
+    el.style.cssText='position:fixed;bottom:22px;left:22px;font-size:12px;font-weight:500;padding:6px 14px;border-radius:20px;z-index:400;transition:all .3s;display:flex;align-items:center;gap:6px;box-shadow:0 2px 8px rgba(0,0,0,.12)';
+    document.body.appendChild(el);
+  }
+  const estados={
+    cargando:['#d6e4f7','#2E75B6','#4472C4','Cargando...'],
+    online:  ['#d1fadf','#1a7f37','#1a7f37','Conectado — datos en la nube'],
+    error:   ['#ffd7d7','#cf222e','#cf222e','Sin conexion a la nube — datos locales'],
+    config:  ['#fff3cd','#9a6700','#9a6700','Falta configurar Supabase'],
+  };
+  const [bg,dot,ft,txt]=estados[estado]||estados.error;
+  el.style.background=bg; el.style.color=ft; el.style.border=`1px solid ${dot}33`;
+  el.innerHTML=`<span style="width:7px;height:7px;border-radius:50%;background:${dot};flex-shrink:0"></span>${txt}`;
+  if(estado==='online') setTimeout(()=>{ if(el) el.style.opacity='.7'; },3000);
+  else el.style.opacity='1';
+}
+
+inicializar();
 </script>
 </body>
 </html>
