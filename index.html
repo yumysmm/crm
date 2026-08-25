@@ -8,8 +8,8 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <style>
 :root{
-  --bg:#f4f3ef;--surface:#fff;--surface2:#f9f8f5;--border:#e2e0d9;
-  --text:#1a1917;--muted:#6b6860;--accent:#1a1917;
+  --bg:#f4f6f9;--surface:#fff;--surface2:#f6f8fb;--border:#e1e5ea;
+  --text:#1c2530;--muted:#66707d;--accent:#1e4d8b;--accent-dark:#163a6b;--accent-bg:#e7eef8;
   --wa:#25d366;--wa-dark:#128c3e;
   --activo:#1a7f37;--activo-bg:#d1fadf;
   --proximo:#9a6700;--proximo-bg:#fff3cd;
@@ -21,13 +21,20 @@
 body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);min-height:100vh;font-size:14px}
 .app{max-width:1400px;margin:0 auto;padding:22px 14px 60px}
 
-.header{display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:20px;gap:10px;flex-wrap:wrap}
-.header h1{font-size:21px;font-weight:600;letter-spacing:-.5px}
+.header{display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:20px;gap:10px;flex-wrap:wrap;padding-bottom:16px;border-bottom:1px solid var(--border)}
+.header h1{font-size:21px;font-weight:600;letter-spacing:-.5px;color:var(--text)}
 .header p{font-size:12.5px;color:var(--muted);margin-top:2px}
 .hact{display:flex;gap:7px;flex-wrap:wrap;align-items:center}
 
+.dropdown{position:relative;display:inline-block}
+.dropdown-menu{position:absolute;top:calc(100% + 6px);right:0;background:var(--surface);border:1px solid var(--border);border-radius:var(--rs);box-shadow:0 8px 24px rgba(16,24,40,.12);min-width:220px;padding:6px;display:none;z-index:300}
+.dropdown-menu.open{display:block}
+.dropdown-item{display:flex;align-items:center;gap:9px;width:100%;padding:8px 10px;border-radius:5px;border:none;background:none;cursor:pointer;font-family:inherit;font-size:12.5px;color:var(--text);text-align:left;white-space:nowrap}
+.dropdown-item:hover{background:var(--surface2)}
+.dropdown-item svg{width:14px;height:14px;flex-shrink:0;color:var(--muted)}
+
 .stats{display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:10px;margin-bottom:18px}
-.stat{background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:12px 14px}
+.stat{background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:12px 14px;box-shadow:0 1px 2px rgba(16,24,40,.04)}
 .stat .num{font-size:24px;font-weight:600;letter-spacing:-1px;line-height:1}
 .stat .lbl{font-size:11px;color:var(--muted);margin-top:3px}
 .s-total .num{color:var(--text)}.s-activo .num{color:var(--activo)}.s-proximo .num{color:var(--proximo)}.s-vencido .num{color:var(--vencido)}.s-notif .num{color:var(--notif)}
@@ -63,7 +70,7 @@ select,input[type=date],input[type=month]{height:34px;padding:0 9px;border:1px s
 .tag .dot{width:6px;height:6px;border-radius:50%;flex-shrink:0}
 .tag .cnt{font-size:10.5px;opacity:.7;margin-left:1px}
 
-.tbl-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--r);overflow:hidden}
+.tbl-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--r);overflow:hidden;box-shadow:0 1px 2px rgba(16,24,40,.04)}
 .tbl-outer{overflow-x:auto}
 table{width:100%;border-collapse:collapse;min-width:1180px}
 thead th{background:var(--surface2);padding:8px 10px;text-align:left;font-size:10.5px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;border-bottom:1px solid var(--border);white-space:nowrap}
@@ -114,7 +121,7 @@ tbody td{padding:8px 10px;vertical-align:middle}
 .empty{text-align:center;padding:48px 16px;color:var(--muted);font-size:13px}
 
 /* RUNT Panel */
-.panel{background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:18px 20px;margin-bottom:16px;display:none}
+.panel{background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:18px 20px;margin-bottom:16px;display:none;box-shadow:0 1px 2px rgba(16,24,40,.04)}
 .panel.open{display:block}
 .panel h3{font-size:13.5px;font-weight:600;margin-bottom:10px}
 .runt-notice{background:#fff8e6;border:1px solid #fcd34d;border-radius:var(--rs);padding:12px 14px;font-size:12px;color:#92400e;margin-bottom:12px;line-height:1.6}
@@ -223,42 +230,45 @@ tbody td{padding:8px 10px;vertical-align:middle}
       <p id="fecha-hoy"></p>
     </div>
     <div class="hact">
-      <button class="btn btn-outline" onclick="togglePanel('backup-panel')" title="Copia y restauracion de la base de datos">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
-        Copia / Restaurar
-      </button>
-      <button class="btn btn-outline" onclick="togglePanel('runt-panel')">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="M21 21l-4.35-4.35"/></svg>
-        Consultar RUNT
-      </button>
-      <button class="btn btn-outline" onclick="togglePanel('ie-panel')">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4M7 10l5 5 5-5M12 15V3"/></svg>
-        Importar / Exportar
-      </button>
-      <button class="btn btn-outline" onclick="abrirMensajes()">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/></svg>
-        Mensajes
-      </button>
-      <button class="btn btn-outline" onclick="abrirConfig()">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 010 2.83 2 2 0 01-2.83 0l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-4 0v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83-2.83l.06-.06A1.65 1.65 0 004.68 15a1.65 1.65 0 00-1.51-1H3a2 2 0 010-4h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 012.83-2.83l.06.06A1.65 1.65 0 009 4.68a1.65 1.65 0 001-1.51V3a2 2 0 014 0v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 012.83 2.83l-.06.06A1.65 1.65 0 0019.4 9a1.65 1.65 0 001.51 1H21a2 2 0 010 4h-.09a1.65 1.65 0 00-1.51 1z"/></svg>
-        Configurar
-      </button>
+      <div class="dropdown" id="tools-dropdown">
+        <button class="btn btn-outline" onclick="toggleToolsMenu(event)">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 010 2.83 2 2 0 01-2.83 0l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-4 0v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83-2.83l.06-.06A1.65 1.65 0 004.68 15a1.65 1.65 0 00-1.51-1H3a2 2 0 010-4h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 012.83-2.83l.06.06A1.65 1.65 0 009 4.68a1.65 1.65 0 001-1.51V3a2 2 0 014 0v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 012.83 2.83l-.06.06A1.65 1.65 0 0019.4 9a1.65 1.65 0 001.51 1H21a2 2 0 010 4h-.09a1.65 1.65 0 00-1.51 1z"/></svg>
+          Herramientas
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:11px;height:11px;margin-left:1px"><polyline points="6 9 12 15 18 9"/></svg>
+        </button>
+        <div class="dropdown-menu" id="tools-menu">
+          <button class="dropdown-item" onclick="togglePanel('backup-panel');closeToolsMenu()" title="Copia y restauracion de la base de datos">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+            Copia / Restaurar
+          </button>
+          <button class="dropdown-item" onclick="togglePanel('runt-panel');closeToolsMenu()">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="M21 21l-4.35-4.35"/></svg>
+            Consultar RUNT
+          </button>
+          <button class="dropdown-item" onclick="togglePanel('ie-panel');closeToolsMenu()">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4M7 10l5 5 5-5M12 15V3"/></svg>
+            Importar / Exportar
+          </button>
+          <button class="dropdown-item" onclick="togglePanel('caja-panel');closeToolsMenu()" title="Cuadre de caja diario">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="6" width="20" height="12" rx="2"/><circle cx="12" cy="12" r="2"/><path d="M6 12h.01M18 12h.01"/></svg>
+            Cuadre de Caja
+          </button>
+          <button class="dropdown-item" onclick="abrirMensajes();closeToolsMenu()">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/></svg>
+            Mensajes
+          </button>
+          <button class="dropdown-item" onclick="abrirConfig();closeToolsMenu()">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 010 2.83 2 2 0 01-2.83 0l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-4 0v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83-2.83l.06-.06A1.65 1.65 0 004.68 15a1.65 1.65 0 00-1.51-1H3a2 2 0 010-4h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 012.83-2.83l.06.06A1.65 1.65 0 009 4.68a1.65 1.65 0 001-1.51V3a2 2 0 014 0v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 012.83 2.83l-.06.06A1.65 1.65 0 0019.4 9a1.65 1.65 0 001.51 1H21a2 2 0 010 4h-.09a1.65 1.65 0 00-1.51 1z"/></svg>
+            Configurar
+          </button>
+        </div>
+      </div>
       <button class="btn btn-wa" onclick="notificarVencidos()">
         <svg viewBox="0 0 24 24" fill="currentColor"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"/></svg>
         Notificar vencidos
       </button>
       <button class="btn btn-dark" onclick="abrirModal()">+ Nuevo cliente</button>
     </div>
-  </div>
-
-  <!-- Stats -->
-  <div class="stats">
-    <div class="stat s-total"><div class="num" id="s-total">0</div><div class="lbl">Total clientes</div></div>
-    <div class="stat s-activo"><div class="num" id="s-activo">0</div><div class="lbl">Activos</div></div>
-    <div class="stat s-proximo"><div class="num" id="s-proximo">0</div><div class="lbl">Proximos 30d</div></div>
-    <div class="stat s-vencido"><div class="num" id="s-vencido">0</div><div class="lbl">Vencidos</div></div>
-    <div class="stat s-notif"><div class="num" id="s-notif">0</div><div class="lbl">Notificados hoy</div></div>
-    <div class="stat stat-total-val"><div class="num" id="s-total-val">$0</div><div class="lbl">Total recaudo</div></div>
   </div>
 
   <!-- Backup Panel -->
@@ -351,6 +361,76 @@ tbody td{padding:8px 10px;vertical-align:middle}
     </div>
   </div>
 
+  <!-- Caja Panel -->
+  <div class="panel" id="caja-panel">
+    <h3>Cuadre de Caja Diario</h3>
+    <div id="caja-edit-banner" style="display:none;align-items:center;justify-content:space-between;gap:10px;background:#fff8e6;border:1px solid #fcd34d;border-radius:var(--rs);padding:8px 12px;font-size:12px;color:#92400e;margin-bottom:12px">
+      <span id="caja-edit-banner-txt">Editando cuadre guardado</span>
+      <button class="btn btn-outline btn-sm" onclick="cajaCancelarEdicion()">Cancelar edición</button>
+    </div>
+    <div style="display:flex;gap:14px;flex-wrap:wrap;align-items:flex-end;margin-bottom:14px">
+      <div>
+        <label style="font-size:11.5px;color:var(--muted);display:block;margin-bottom:4px">Fecha</label>
+        <input type="date" id="caja-fecha" style="height:34px;padding:0 9px;border:1px solid var(--border);border-radius:var(--rs);font-family:inherit;font-size:12.5px">
+      </div>
+      <div>
+        <label style="font-size:11.5px;color:var(--muted);display:block;margin-bottom:4px">Base inicial</label>
+        <input type="number" id="caja-base" value="0" style="height:34px;padding:0 9px;border:1px solid var(--border);border-radius:var(--rs);font-family:inherit;font-size:12.5px;width:130px" oninput="cajaCalcular()">
+      </div>
+      <div>
+        <label style="font-size:11.5px;color:var(--muted);display:block;margin-bottom:4px">Gasto</label>
+        <input type="number" id="caja-gasto" value="0" style="height:34px;padding:0 9px;border:1px solid var(--border);border-radius:var(--rs);font-family:inherit;font-size:12.5px;width:130px" oninput="cajaCalcular()">
+      </div>
+      <button class="btn btn-outline" onclick="cajaAgregarFila()">+ Agregar fila</button>
+      <div style="margin-left:auto;display:flex;gap:8px">
+        <button class="btn btn-outline" onclick="cajaNuevo()">Nuevo cuadre</button>
+        <button class="btn btn-dark" id="caja-btn-guardar" onclick="cajaGuardar()">Guardar cuadre</button>
+      </div>
+    </div>
+
+    <div class="tbl-outer" style="margin-bottom:14px">
+      <table>
+        <thead>
+          <tr><th style="width:40px">No.</th><th>Nombre</th><th>Placa</th><th>Valor SOAT</th><th>Comisión</th><th>Total</th><th style="width:40px"></th></tr>
+        </thead>
+        <tbody id="caja-filas-body"></tbody>
+        <tfoot>
+          <tr style="font-weight:600">
+            <td colspan="3" style="text-align:right;padding-right:10px">TOTAL</td>
+            <td id="caja-tot-soat">$0</td>
+            <td id="caja-tot-com">$0</td>
+            <td id="caja-tot-gen">$0</td>
+            <td></td>
+          </tr>
+        </tfoot>
+      </table>
+    </div>
+
+    <div style="display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px;max-width:700px;margin-bottom:16px">
+      <div class="stat"><div class="num" id="caja-final" style="font-size:18px">$0</div><div class="lbl">Final de día</div></div>
+      <div class="stat"><div class="num" id="caja-base-lbl" style="font-size:18px">$0</div><div class="lbl">Base inicial</div></div>
+      <div class="stat"><div class="num" id="caja-gasto-lbl" style="font-size:18px">$0</div><div class="lbl">Gasto</div></div>
+      <div class="stat"><div class="num" id="caja-consignar" style="font-size:18px;color:var(--activo)">$0</div><div class="lbl">Consignar</div></div>
+    </div>
+
+    <div style="border-top:1px solid var(--border);padding-top:12px">
+      <div style="font-size:12px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.4px;margin-bottom:8px">Cuadres guardados</div>
+      <div id="caja-historial" style="font-size:12.5px;color:var(--muted)">Sin cuadres guardados.</div>
+    </div>
+  </div>
+
+  <!-- Vista de clientes: stats + tabs + tabla (se oculta al abrir Cuadre de Caja) -->
+  <div id="clientes-view">
+  <!-- Stats -->
+  <div class="stats">
+    <div class="stat s-total"><div class="num" id="s-total">0</div><div class="lbl">Total clientes</div></div>
+    <div class="stat s-activo"><div class="num" id="s-activo">0</div><div class="lbl">Activos</div></div>
+    <div class="stat s-proximo"><div class="num" id="s-proximo">0</div><div class="lbl">Proximos 30d</div></div>
+    <div class="stat s-vencido"><div class="num" id="s-vencido">0</div><div class="lbl">Vencidos</div></div>
+    <div class="stat s-notif"><div class="num" id="s-notif">0</div><div class="lbl">Notificados hoy</div></div>
+    <div class="stat stat-total-val"><div class="num" id="s-total-val">$0</div><div class="lbl">Total recaudo</div></div>
+  </div>
+
   <!-- Tabs -->
   <div class="tabs">
     <div class="tab active" onclick="setTab('todos')">Todos</div>
@@ -416,6 +496,8 @@ tbody td{padding:8px 10px;vertical-align:middle}
       <div class="pagination-btns" id="pagination-btns"></div>
     </div>
   </div>
+  </div>
+  <!-- /clientes-view -->
 </div>
 
 <!-- Modal cliente -->
@@ -996,7 +1078,20 @@ function guardarCliente(){
 }
 
 // ── RUNT ──────────────────────────────────────────────────────────────────────
-function togglePanel(id){document.getElementById(id).classList.toggle('open');}
+function togglePanel(id){
+  const p = document.getElementById(id);
+  p.classList.toggle('open');
+  if(id==='caja-panel'){
+    const cv = document.getElementById('clientes-view');
+    cv.style.display = p.classList.contains('open') ? 'none' : '';
+  }
+}
+function toggleToolsMenu(e){ e.stopPropagation(); document.getElementById('tools-menu').classList.toggle('open'); }
+function closeToolsMenu(){ document.getElementById('tools-menu').classList.remove('open'); }
+document.addEventListener('click', function(e){
+  const dd = document.getElementById('tools-dropdown');
+  if(dd && !dd.contains(e.target)) closeToolsMenu();
+});
 function abrirRUNT(){const p=document.getElementById('runt-placa').value.trim().toUpperCase().replace(/[^A-Z0-9]/g,'');if(!p){alert('Ingresa una placa.');return;}window.open('https://www.runt.gov.co/consultaCiudadana/#/consultaVehiculo','_blank');toast('RUNT abierto — placa: '+p);}
 function abrirRUNTp(placa){document.getElementById('runt-placa').value=placa;document.getElementById('runt-panel').classList.add('open');window.open('https://www.runt.gov.co/consultaCiudadana/#/consultaVehiculo','_blank');toast('RUNT abierto: '+placa);}
 
@@ -1315,6 +1410,179 @@ document.getElementById('filtro-mes').addEventListener('change',render);
 document.getElementById('filtro-dia').addEventListener('change',render);
 document.addEventListener('keydown',e=>{if(e.key==='Escape')['modal','modal-config','modal-import','modal-mensajes'].forEach(id=>document.getElementById(id).style.display='none');});
 
+// ── Cuadre de Caja Diario (modulo nuevo e independiente) ───────────────────────
+let cuadresCaja = [];   // historial de cuadres guardados
+let cajaFilaId = 1;
+let cajaEditandoId = null; // id del cuadre guardado que se esta editando (null = nuevo)
+
+function cajaFmt(n){ return '$'+Number(n||0).toLocaleString('es-CO'); }
+
+function cajaAgregarFila(nombre, placa, soat, comision){
+  const tbody = document.getElementById('caja-filas-body');
+  const id = 'cf'+(cajaFilaId++);
+  const tr = document.createElement('tr');
+  tr.id = id;
+  tr.innerHTML = `
+    <td class="mono">${tbody.children.length+1}</td>
+    <td><input type="text" value="${nombre||''}" style="width:100%;border:1px solid var(--border);border-radius:4px;height:28px;padding:0 6px;font-family:inherit;font-size:12.5px" onchange="cajaCalcular()"></td>
+    <td><input type="text" value="${placa||''}" style="width:100%;border:1px solid var(--border);border-radius:4px;height:28px;padding:0 6px;font-family:inherit;font-size:12.5px" onchange="cajaCalcular()"></td>
+    <td><input type="number" value="${soat||0}" style="width:100px;border:1px solid var(--border);border-radius:4px;height:28px;padding:0 6px;font-family:inherit;font-size:12.5px" oninput="cajaCalcular()"></td>
+    <td><input type="number" value="${comision||0}" style="width:100px;border:1px solid var(--border);border-radius:4px;height:28px;padding:0 6px;font-family:inherit;font-size:12.5px" oninput="cajaCalcular()"></td>
+    <td class="caja-fila-total mono">$0</td>
+    <td><button onclick="document.getElementById('${id}').remove();cajaCalcular()" style="background:none;border:none;cursor:pointer;color:var(--vencido);font-size:15px" title="Eliminar fila">×</button></td>`;
+  tbody.appendChild(tr);
+  cajaCalcular();
+}
+
+function cajaLeerFilas(){
+  return [...document.querySelectorAll('#caja-filas-body tr')].map(tr=>{
+    const inputs = tr.querySelectorAll('input');
+    return {
+      nombre: inputs[0].value,
+      placa: inputs[1].value,
+      valorSoat: Number(inputs[2].value)||0,
+      comision: Number(inputs[3].value)||0,
+    };
+  });
+}
+
+function cajaCalcular(){
+  const filas = cajaLeerFilas();
+  const trs = document.querySelectorAll('#caja-filas-body tr');
+  let totSoat=0, totCom=0;
+  filas.forEach((f,i)=>{
+    const total = f.valorSoat + f.comision;
+    totSoat += f.valorSoat; totCom += f.comision;
+    trs[i].querySelector('td.mono').textContent = i+1;
+    trs[i].querySelector('.caja-fila-total').textContent = cajaFmt(total);
+  });
+  const totGen = totSoat + totCom;
+  const base = Number(document.getElementById('caja-base').value)||0;
+  const gasto = Number(document.getElementById('caja-gasto').value)||0;
+  const finalDia = base + totGen;
+  const consignar = totGen - gasto;
+
+  document.getElementById('caja-tot-soat').textContent = cajaFmt(totSoat);
+  document.getElementById('caja-tot-com').textContent = cajaFmt(totCom);
+  document.getElementById('caja-tot-gen').textContent = cajaFmt(totGen);
+  document.getElementById('caja-final').textContent = cajaFmt(finalDia);
+  document.getElementById('caja-base-lbl').textContent = cajaFmt(base);
+  document.getElementById('caja-gasto-lbl').textContent = cajaFmt(gasto);
+  document.getElementById('caja-consignar').textContent = cajaFmt(consignar);
+
+  return {filas, totSoat, totCom, totGen, base, gasto, finalDia, consignar};
+}
+
+function cajaNuevo(){
+  cajaEditandoId = null;
+  document.getElementById('caja-edit-banner').style.display='none';
+  document.getElementById('caja-btn-guardar').textContent='Guardar cuadre';
+  document.getElementById('caja-filas-body').innerHTML='';
+  document.getElementById('caja-base').value=0;
+  document.getElementById('caja-gasto').value=0;
+  document.getElementById('caja-fecha').value = hoyStr;
+  cajaAgregarFila();
+}
+
+async function cajaGuardar(){
+  const c = cajaCalcular();
+  const fecha = document.getElementById('caja-fecha').value || hoyStr;
+  const filasValidas = c.filas.filter(f=>f.nombre || f.placa || f.valorSoat || f.comision);
+  if(!filasValidas.length){ toast('Agrega al menos una fila antes de guardar'); return; }
+  const datos = {
+    fecha,
+    filas: filasValidas,
+    baseInicial: c.base,
+    gasto: c.gasto,
+    totalSoat: c.totSoat,
+    totalComision: c.totCom,
+    totalGeneral: c.totGen,
+    finalDia: c.finalDia,
+    consignar: c.consignar,
+    guardadoEn: new Date().toISOString(),
+  };
+  if(cajaEditandoId){
+    const idx = cuadresCaja.findIndex(x=>x.id===cajaEditandoId);
+    if(idx>-1){
+      cuadresCaja[idx] = {...cuadresCaja[idx], ...datos};
+      toast('Cuadre actualizado ✔');
+    } else {
+      cuadresCaja.unshift({id:Date.now(), ...datos});
+      toast('Cuadre guardado ✔');
+    }
+  } else {
+    cuadresCaja.unshift({id:Date.now(), ...datos});
+    toast('Cuadre de caja guardado ✔');
+  }
+  lsSet('crm_cuadres_caja', cuadresCaja);
+  await dbGuardar('cuadres_caja', cuadresCaja);
+  cajaEditandoId = null;
+  document.getElementById('caja-edit-banner').style.display='none';
+  document.getElementById('caja-btn-guardar').textContent='Guardar cuadre';
+  renderCajaHistorial();
+}
+
+function cajaEditarRegistro(id){
+  const r = cuadresCaja.find(x=>x.id===id);
+  if(!r) return;
+  cajaEditandoId = id;
+  document.getElementById('caja-fecha').value = r.fecha;
+  document.getElementById('caja-base').value = r.baseInicial;
+  document.getElementById('caja-gasto').value = r.gasto;
+  document.getElementById('caja-filas-body').innerHTML='';
+  r.filas.forEach(f=>cajaAgregarFila(f.nombre, f.placa, f.valorSoat, f.comision));
+  cajaCalcular();
+  document.getElementById('caja-edit-banner-txt').textContent = 'Editando cuadre del '+r.fecha+' — al guardar se actualizara este registro';
+  document.getElementById('caja-edit-banner').style.display='flex';
+  document.getElementById('caja-btn-guardar').textContent='Actualizar cuadre';
+  toast('Editando cuadre del '+r.fecha);
+}
+
+function cajaCancelarEdicion(){
+  cajaNuevo();
+  toast('Edicion cancelada');
+}
+
+function cajaVerRegistro(id){
+  const r = cuadresCaja.find(x=>x.id===id);
+  if(!r) return;
+  cajaEditandoId = null;
+  document.getElementById('caja-edit-banner').style.display='none';
+  document.getElementById('caja-btn-guardar').textContent='Guardar cuadre';
+  document.getElementById('caja-fecha').value = r.fecha;
+  document.getElementById('caja-base').value = r.baseInicial;
+  document.getElementById('caja-gasto').value = r.gasto;
+  document.getElementById('caja-filas-body').innerHTML='';
+  r.filas.forEach(f=>cajaAgregarFila(f.nombre, f.placa, f.valorSoat, f.comision));
+  cajaCalcular();
+  toast('Cuadre del '+r.fecha+' cargado');
+}
+
+function cajaEliminarRegistro(id){
+  if(!confirm('¿Eliminar este cuadre guardado? Esta accion no se puede deshacer.')) return;
+  cuadresCaja = cuadresCaja.filter(x=>x.id!==id);
+  lsSet('crm_cuadres_caja', cuadresCaja);
+  dbGuardar('cuadres_caja', cuadresCaja);
+  if(cajaEditandoId===id) cajaCancelarEdicion();
+  renderCajaHistorial();
+}
+
+function renderCajaHistorial(){
+  const el = document.getElementById('caja-historial');
+  if(!cuadresCaja.length){ el.textContent='Sin cuadres guardados.'; return; }
+  const ordenados = [...cuadresCaja].sort((a,b)=> b.fecha.localeCompare(a.fecha) || b.id-a.id);
+  el.innerHTML = `<div style="display:flex;flex-direction:column;gap:6px;max-height:220px;overflow:auto">` +
+    ordenados.map(r=>`
+      <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;padding:7px 10px;background:var(--surface2);border-radius:6px">
+        <span><b style="color:var(--text)">${r.fecha}</b> — ${r.filas.length} registro(s) — Consignar: <b style="color:var(--activo)">${cajaFmt(r.consignar)}</b></span>
+        <span style="display:flex;gap:10px;flex-shrink:0">
+          <button onclick="cajaVerRegistro(${r.id})" style="background:none;border:none;cursor:pointer;color:var(--notif);text-decoration:underline;font-size:12px">Ver</button>
+          <button onclick="cajaEditarRegistro(${r.id})" style="background:none;border:none;cursor:pointer;color:var(--accent);text-decoration:underline;font-size:12px">Editar</button>
+          <button onclick="cajaEliminarRegistro(${r.id})" style="background:none;border:none;cursor:pointer;color:var(--vencido);text-decoration:underline;font-size:12px">Eliminar</button>
+        </span>
+      </div>`).join('') + `</div>`;
+}
+
 // ── Inicializacion desde Supabase ──────────────────────────────────────────────
 async function inicializar(){
   _initSB(); // init Supabase after SDK is loaded
@@ -1330,10 +1598,11 @@ async function inicializar(){
     if(cfg.ciudades)   ciudades   = cfg.ciudades;
     if(cfg.vendedores) vendedores = cfg.vendedores;
     if(cfg.mensajes)   mensajes   = cfg.mensajes;
+    if(cfg.cuadres_caja) cuadresCaja = cfg.cuadres_caja;
     // Cache offline
     lsSet('crm_clientes',clientes); lsSet('crm_servicios',servicios);
     lsSet('crm_ciudades',ciudades); lsSet('crm_vendedores',vendedores);
-    lsSet('crm_mensajes',mensajes);
+    lsSet('crm_mensajes',mensajes); lsSet('crm_cuadres_caja',cuadresCaja);
     mostrarConexion('online');
   } else {
     // Fallback offline
@@ -1343,10 +1612,12 @@ async function inicializar(){
     const lsD=lsGet('crm_ciudades',null);  if(lsD) ciudades=lsD;
     const lsV=lsGet('crm_vendedores',null);if(lsV) vendedores=lsV;
     const lsM=lsGet('crm_mensajes',null);  if(lsM) mensajes=lsM;
+    const lsCaja=lsGet('crm_cuadres_caja',null); if(lsCaja) cuadresCaja=lsCaja;
     mostrarConexion(_sb ? 'error' : 'config');
   }
 
   poblarFiltros(); renderTags(); render(); renderHistorial(); actualizarUltimaCopia();
+  renderCajaHistorial(); cajaNuevo();
 
   // Auto-refresh cada 20 segundos para ver cambios de otros usuarios
   if(SUPABASE_URL){
@@ -1358,6 +1629,7 @@ async function inicializar(){
         if(d.ciudades)ciudades=d.ciudades;
         if(d.vendedores)vendedores=d.vendedores;
         if(d.mensajes)mensajes=d.mensajes;
+        if(d.cuadres_caja){cuadresCaja=d.cuadres_caja;renderCajaHistorial();}
         poblarFiltros();renderTags();render();
         mostrarConexion('online');
       }
