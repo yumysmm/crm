@@ -383,6 +383,10 @@ tbody td{padding:8px 10px;vertical-align:middle}
       </div>
       <button class="btn btn-outline" onclick="cajaAgregarFila()">+ Agregar fila</button>
       <div style="margin-left:auto;display:flex;gap:8px">
+        <button class="btn btn-outline" onclick="cajaImprimir()" title="Imprimir o guardar como PDF">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:14px;height:14px"><polyline points="6 9 6 2 18 2 18 9"/><path d="M6 18H4a2 2 0 01-2-2v-5a2 2 0 012-2h16a2 2 0 012 2v5a2 2 0 01-2 2h-2"/><rect x="6" y="14" width="12" height="8"/></svg>
+          Imprimir / PDF
+        </button>
         <button class="btn btn-outline" onclick="cajaNuevo()">Nuevo cuadre</button>
         <button class="btn btn-dark" id="caja-btn-guardar" onclick="cajaGuardar()">Guardar cuadre</button>
       </div>
@@ -406,10 +410,34 @@ tbody td{padding:8px 10px;vertical-align:middle}
       </table>
     </div>
 
-    <div style="display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px;max-width:700px;margin-bottom:16px">
+    <div style="margin-bottom:14px">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px">
+        <span style="font-size:12px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.4px">Recogidas / Consignaciones anticipadas</span>
+        <button class="btn btn-outline" onclick="cajaAgregarAnticipo()">+ Agregar</button>
+      </div>
+      <div class="tbl-outer">
+        <table>
+          <thead>
+            <tr><th style="width:40px">No.</th><th>Descripción</th><th style="width:160px">Valor</th><th style="width:40px"></th></tr>
+          </thead>
+          <tbody id="caja-anticipos-body"></tbody>
+          <tfoot>
+            <tr style="font-weight:600">
+              <td colspan="2" style="text-align:right;padding-right:10px">TOTAL ANTICIPADO</td>
+              <td id="caja-tot-anticipos">$0</td>
+              <td></td>
+            </tr>
+          </tfoot>
+        </table>
+      </div>
+      <p style="font-size:11px;color:var(--muted);margin-top:6px">Dinero que ya fue recogido o consignado antes del cierre del día (se descuenta de lo que falta por consignar).</p>
+    </div>
+
+    <div style="display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:10px;max-width:900px;margin-bottom:16px">
       <div class="stat"><div class="num" id="caja-final" style="font-size:18px">$0</div><div class="lbl">Final de día</div></div>
       <div class="stat"><div class="num" id="caja-base-lbl" style="font-size:18px">$0</div><div class="lbl">Base inicial</div></div>
       <div class="stat"><div class="num" id="caja-gasto-lbl" style="font-size:18px">$0</div><div class="lbl">Gasto</div></div>
+      <div class="stat"><div class="num" id="caja-anticipos-lbl" style="font-size:18px">$0</div><div class="lbl">Anticipado</div></div>
       <div class="stat"><div class="num" id="caja-consignar" style="font-size:18px;color:var(--activo)">$0</div><div class="lbl">Consignar</div></div>
     </div>
 
@@ -516,6 +544,16 @@ tbody td{padding:8px 10px;vertical-align:middle}
       <div class="field-row">
         <div class="field"><label>Ciudad</label><select id="f-ciudad"></select></div>
         <div class="field"><label>Vendedor</label><select id="f-vendedor"></select></div>
+      </div>
+      <div class="field-row">
+        <div class="field"><label>Tipo de vehículo</label>
+          <select id="f-tipo-vehiculo">
+            <option value="moto">Moto</option>
+            <option value="motocarro">Motocarro</option>
+            <option value="carro">Carro</option>
+          </select>
+        </div>
+        <div class="field"><label>Cilindraje (cc)</label><input id="f-cilindraje" type="number" placeholder="125" min="0" step="1"></div>
       </div>
       <div class="field"><label>Numero celular (sin +57)</label><input id="f-celular" type="tel" placeholder="3001234567" maxlength="10"></div>
       <div class="field-row">
@@ -1050,6 +1088,8 @@ function abrirModal(id){
   document.getElementById('f-placa').value=c?.placa||'';
   document.getElementById('f-fecha').value=c?.fecha||'';
   document.getElementById('f-celular').value=c?.celular||'';
+  document.getElementById('f-tipo-vehiculo').value=c?.tipoVehiculo||'moto';
+  document.getElementById('f-cilindraje').value=c?.cilindraje||'';
   poblarSelectsModal(c);
   document.getElementById('modal').style.display='block';
   setTimeout(()=>document.getElementById('f-nombre').focus(),50);
@@ -1068,11 +1108,13 @@ function guardarCliente(){
   const servicio=document.getElementById('f-servicio').value;
   const ciudad=document.getElementById('f-ciudad').value;
   const vendedor=document.getElementById('f-vendedor').value;
+  const tipoVehiculo=document.getElementById('f-tipo-vehiculo').value;
+  const cilindraje=parseInt(document.getElementById('f-cilindraje').value)||0;
   const valorSoat=parseFloat(document.getElementById('f-valor-soat').value)||0;
   const valorSvc=parseFloat(document.getElementById('f-valor-svc').value)||20000;
   if(!nombre||!placa||!fecha){alert('Complete nombre, placa y fecha.');return;}
-  if(editId){const c=clientes.find(x=>x.id===editId);Object.assign(c,{nombre,placa,fecha,celular,servicio,ciudad,vendedor,valorSoat,valorSvc});}
-  else clientes.push({id:nextId++,nombre,placa,fecha,celular,servicio,ciudad,vendedor,valorSoat,valorSvc,notifFecha:null});
+  if(editId){const c=clientes.find(x=>x.id===editId);Object.assign(c,{nombre,placa,fecha,celular,servicio,ciudad,vendedor,tipoVehiculo,cilindraje,valorSoat,valorSvc});}
+  else clientes.push({id:nextId++,nombre,placa,fecha,celular,servicio,ciudad,vendedor,tipoVehiculo,cilindraje,valorSoat,valorSvc,notifFecha:null});
   guardarTodo();document.getElementById('modal').style.display='none';
   renderTags();render();poblarFiltros();toast(editId?'Cliente actualizado':'Cliente agregado');
 }
@@ -1166,9 +1208,12 @@ function procesarArchivo(file){
         const vendedor=r['vendedor']||r['asesor']||'';
         const valorSoat=parseFloat((r['valor_soat']||r['valor soat']||r['soat']||'0').toString().replace(/[^0-9.]/g,''))||0;
         const valorSvc=parseFloat((r['valor_servicio']||r['valor servicio']||r['valor svc']||r['servicio $']||'20000').toString().replace(/[^0-9.]/g,''))||20000;
+        const tvRaw=(r['tipo_vehiculo']||r['tipo de vehiculo']||r['tipo']||'moto').toLowerCase();
+        const tipoVehiculo=tvRaw.includes('motocarro')?'motocarro':tvRaw.includes('carro')||tvRaw.includes('auto')?'carro':'moto';
+        const cilindraje=parseInt((r['cilindraje']||r['cc']||'0').toString().replace(/[^0-9]/g,''))||0;
         let fecha=r['fecha']||r['fecha de vencimiento']||r['vencimiento']||'';
         if(fecha&&fecha.includes('/')){const p=fecha.split('/');if(p.length===3)fecha=p[2].length===4?`${p[2]}-${p[1].padStart(2,'0')}-${p[0].padStart(2,'0')}`:`${p[0]}-${p[1].padStart(2,'0')}-${p[2].padStart(2,'0')}`;}
-        return{nombre,placa,fecha,celular,servicio,ciudad,vendedor,valorSoat,valorSvc,notifFecha:null};
+        return{nombre,placa,fecha,celular,servicio,ciudad,vendedor,tipoVehiculo,cilindraje,valorSoat,valorSvc,notifFecha:null};
       }).filter(r=>r.nombre&&r.placa&&r.fecha);
       if(!parsed.length){alert('No se encontraron filas validas.');return;}
       mostrarPreview(parsed);
@@ -1182,7 +1227,7 @@ function mostrarPreview(rows){
   document.getElementById('import-info').innerHTML=`<b>${rows.length} clientes</b> encontrados.`+(ya.length?` <span style="color:var(--proximo)">${ya.length} duplicados seran actualizados.</span>`:'');
   const w=document.getElementById('import-warn');
   if(ya.length){w.textContent='Placas duplicadas: '+ya.map(r=>r.placa).join(', ');w.style.display='block';}else w.style.display='none';
-  document.getElementById('prev-table').innerHTML=`<table><thead><tr><th>Nombre</th><th>Placa</th><th>Fecha</th><th>Servicio</th><th>Ciudad</th><th>Vendedor</th><th>Valor SOAT</th><th>Valor Svc</th></tr></thead><tbody>${rows.slice(0,7).map(r=>`<tr><td>${r.nombre}</td><td class="mono">${r.placa}</td><td>${r.fecha}</td><td>${getSvc(r.servicio).nombre}</td><td>${r.ciudad||'—'}</td><td>${r.vendedor||'—'}</td><td>${r.valorSoat?'$'+Number(r.valorSoat).toLocaleString('es-CO'):'—'}</td><td>$${Number(r.valorSvc||20000).toLocaleString('es-CO')}</td></tr>`).join('')}${rows.length>7?`<tr><td colspan="8" style="text-align:center;color:var(--muted)">... y ${rows.length-7} mas</td></tr>`:''}</tbody></table>`;
+  document.getElementById('prev-table').innerHTML=`<table><thead><tr><th>Nombre</th><th>Placa</th><th>Fecha</th><th>Servicio</th><th>Ciudad</th><th>Vendedor</th><th>Tipo</th><th>Cilindraje</th><th>Valor SOAT</th><th>Valor Svc</th></tr></thead><tbody>${rows.slice(0,7).map(r=>`<tr><td>${r.nombre}</td><td class="mono">${r.placa}</td><td>${r.fecha}</td><td>${getSvc(r.servicio).nombre}</td><td>${r.ciudad||'—'}</td><td>${r.vendedor||'—'}</td><td>${tvLabel(r.tipoVehiculo)}</td><td>${r.cilindraje?r.cilindraje+' cc':'—'}</td><td>${r.valorSoat?'$'+Number(r.valorSoat).toLocaleString('es-CO'):'—'}</td><td>$${Number(r.valorSvc||20000).toLocaleString('es-CO')}</td></tr>`).join('')}${rows.length>7?`<tr><td colspan="10" style="text-align:center;color:var(--muted)">... y ${rows.length-7} mas</td></tr>`:''}</tbody></table>`;
   document.getElementById('modal-import').style.display='block';
 }
 function confirmarImport(){
@@ -1199,24 +1244,26 @@ function exportarExcel(modo){
     const{est,dias}=calcEstado(c.fecha);
     return{'N°':i+1,'Nombre':c.nombre,'Placa':c.placa,'Servicio':getSvc(c.servicio).nombre,
       'Ciudad':c.ciudad||'','Vendedor':c.vendedor||'','Fecha Vencimiento':c.fecha,
+      'Tipo Vehiculo':tvLabel(c.tipoVehiculo),'Cilindraje':c.cilindraje||'',
       'Estado':est,'Dias Restantes':dias,'Celular':c.celular||'',
       'Valor SOAT':c.valorSoat||0,'Valor Servicio':c.valorSvc||20000,'Total':(c.valorSoat||0)+(c.valorSvc||20000),
       'Notificado':c.notifFecha||'No','Link WhatsApp':c.celular?'https://wa.me/57'+c.celular:''};
   });
   const wb=XLSX.utils.book_new();const ws=XLSX.utils.json_to_sheet(rows);
-  ws['!cols']=[{wch:5},{wch:26},{wch:10},{wch:18},{wch:14},{wch:16},{wch:18},{wch:12},{wch:14},{wch:14},{wch:14},{wch:14},{wch:14},{wch:14},{wch:35}];
+  ws['!cols']=[{wch:5},{wch:26},{wch:10},{wch:18},{wch:14},{wch:16},{wch:18},{wch:12},{wch:11},{wch:12},{wch:14},{wch:14},{wch:14},{wch:14},{wch:14},{wch:14},{wch:35}];
   XLSX.utils.book_append_sheet(wb,ws,'Clientes');
   XLSX.writeFile(wb,(modo==='todos'?'CRM_todos':modo==='vencidos'?'CRM_vencidos':'CRM_filtro')+'_'+hoyStr+'.xlsx');
   toast(`Exportados ${rows.length} clientes`);
 }
 function descargarPlantilla(){
   const rows=[
-    {nombre:'Carlos Rodriguez',placa:'ABC123',fecha:'2026-05-15',celular:'3001234567',servicio:'SOAT',ciudad:'Medellin',vendedor:'Juan Gomez',valor_soat:195000,valor_servicio:20000},
-    {nombre:'Maria Garcia',    placa:'XYZ456',fecha:'2026-06-20',celular:'3119876543',servicio:'Revision Tecnica',ciudad:'Bogota',vendedor:'Maria Lopez',valor_soat:0,valor_servicio:20000},
-    {nombre:'Ana Lopez',       placa:'GHI012',fecha:'2026-07-10',celular:'3156789012',servicio:'Seguro Todo Riesgo',ciudad:'Cali',vendedor:'Carlos Perez',valor_soat:0,valor_servicio:20000},
+    {nombre:'Carlos Rodriguez',placa:'ABC123',fecha:'2026-05-15',celular:'3001234567',servicio:'SOAT',ciudad:'Medellin',vendedor:'Juan Gomez',tipo_vehiculo:'Moto',cilindraje:125,valor_soat:195000,valor_servicio:20000},
+    {nombre:'Maria Garcia',    placa:'XYZ456',fecha:'2026-06-20',celular:'3119876543',servicio:'Revision Tecnica',ciudad:'Bogota',vendedor:'Maria Lopez',tipo_vehiculo:'Carro',cilindraje:1600,valor_soat:0,valor_servicio:20000},
+    {nombre:'Ana Lopez',       placa:'GHI012',fecha:'2026-07-10',celular:'3156789012',servicio:'Seguro Todo Riesgo',ciudad:'Cali',vendedor:'Carlos Perez',tipo_vehiculo:'Moto',cilindraje:150,valor_soat:0,valor_servicio:20000},
+    {nombre:'Pedro Ramirez',   placa:'MTC789',fecha:'2026-08-05',celular:'3201234567',servicio:'SOAT',ciudad:'Barranquilla',vendedor:'Juan Gomez',tipo_vehiculo:'Motocarro',cilindraje:200,valor_soat:220000,valor_servicio:20000},
   ];
   const wb=XLSX.utils.book_new();const ws=XLSX.utils.json_to_sheet(rows);
-  ws['!cols']=[{wch:26},{wch:10},{wch:14},{wch:14},{wch:18},{wch:14},{wch:16},{wch:14},{wch:16}];
+  ws['!cols']=[{wch:26},{wch:10},{wch:14},{wch:14},{wch:18},{wch:14},{wch:16},{wch:14},{wch:12},{wch:14},{wch:16}];
   XLSX.utils.book_append_sheet(wb,ws,'Clientes');
   XLSX.writeFile(wb,'Plantilla_CRM.xlsx');toast('Plantilla descargada');
 }
@@ -1416,6 +1463,7 @@ let cajaFilaId = 1;
 let cajaEditandoId = null; // id del cuadre guardado que se esta editando (null = nuevo)
 
 function cajaFmt(n){ return '$'+Number(n||0).toLocaleString('es-CO'); }
+function tvLabel(tv){ return tv==='carro'?'Carro':tv==='motocarro'?'Motocarro':'Moto'; }
 
 function cajaAgregarFila(nombre, placa, soat, comision){
   const tbody = document.getElementById('caja-filas-body');
@@ -1434,6 +1482,20 @@ function cajaAgregarFila(nombre, placa, soat, comision){
   cajaCalcular();
 }
 
+function cajaAgregarAnticipo(descripcion, valor){
+  const tbody = document.getElementById('caja-anticipos-body');
+  const id = 'ca'+(cajaFilaId++);
+  const tr = document.createElement('tr');
+  tr.id = id;
+  tr.innerHTML = `
+    <td class="mono">${tbody.children.length+1}</td>
+    <td><input type="text" value="${descripcion||''}" placeholder="Ej: recogido por Pedro / consignacion parcial" style="width:100%;border:1px solid var(--border);border-radius:4px;height:28px;padding:0 6px;font-family:inherit;font-size:12.5px" onchange="cajaCalcular()"></td>
+    <td><input type="number" value="${valor||0}" style="width:100%;border:1px solid var(--border);border-radius:4px;height:28px;padding:0 6px;font-family:inherit;font-size:12.5px" oninput="cajaCalcular()"></td>
+    <td><button onclick="document.getElementById('${id}').remove();cajaCalcular()" style="background:none;border:none;cursor:pointer;color:var(--vencido);font-size:15px" title="Eliminar">×</button></td>`;
+  tbody.appendChild(tr);
+  cajaCalcular();
+}
+
 function cajaLeerFilas(){
   return [...document.querySelectorAll('#caja-filas-body tr')].map(tr=>{
     const inputs = tr.querySelectorAll('input');
@@ -1442,6 +1504,16 @@ function cajaLeerFilas(){
       placa: inputs[1].value,
       valorSoat: Number(inputs[2].value)||0,
       comision: Number(inputs[3].value)||0,
+    };
+  });
+}
+
+function cajaLeerAnticipos(){
+  return [...document.querySelectorAll('#caja-anticipos-body tr')].map(tr=>{
+    const inputs = tr.querySelectorAll('input');
+    return {
+      descripcion: inputs[0].value,
+      valor: Number(inputs[1].value)||0,
     };
   });
 }
@@ -1457,10 +1529,17 @@ function cajaCalcular(){
     trs[i].querySelector('.caja-fila-total').textContent = cajaFmt(total);
   });
   const totGen = totSoat + totCom;
+
+  const anticipos = cajaLeerAnticipos();
+  const antTrs = document.querySelectorAll('#caja-anticipos-body tr');
+  let totAnticipos=0;
+  anticipos.forEach((a,i)=>{ totAnticipos += a.valor; antTrs[i].querySelector('td.mono').textContent = i+1; });
+  document.getElementById('caja-tot-anticipos').textContent = cajaFmt(totAnticipos);
+
   const base = Number(document.getElementById('caja-base').value)||0;
   const gasto = Number(document.getElementById('caja-gasto').value)||0;
   const finalDia = base + totGen;
-  const consignar = totGen - gasto;
+  const consignar = totGen - gasto - totAnticipos;
 
   document.getElementById('caja-tot-soat').textContent = cajaFmt(totSoat);
   document.getElementById('caja-tot-com').textContent = cajaFmt(totCom);
@@ -1468,9 +1547,10 @@ function cajaCalcular(){
   document.getElementById('caja-final').textContent = cajaFmt(finalDia);
   document.getElementById('caja-base-lbl').textContent = cajaFmt(base);
   document.getElementById('caja-gasto-lbl').textContent = cajaFmt(gasto);
+  document.getElementById('caja-anticipos-lbl').textContent = cajaFmt(totAnticipos);
   document.getElementById('caja-consignar').textContent = cajaFmt(consignar);
 
-  return {filas, totSoat, totCom, totGen, base, gasto, finalDia, consignar};
+  return {filas, totSoat, totCom, totGen, anticipos, totAnticipos, base, gasto, finalDia, consignar};
 }
 
 function cajaNuevo(){
@@ -1478,6 +1558,7 @@ function cajaNuevo(){
   document.getElementById('caja-edit-banner').style.display='none';
   document.getElementById('caja-btn-guardar').textContent='Guardar cuadre';
   document.getElementById('caja-filas-body').innerHTML='';
+  document.getElementById('caja-anticipos-body').innerHTML='';
   document.getElementById('caja-base').value=0;
   document.getElementById('caja-gasto').value=0;
   document.getElementById('caja-fecha').value = hoyStr;
@@ -1489,11 +1570,14 @@ async function cajaGuardar(){
   const fecha = document.getElementById('caja-fecha').value || hoyStr;
   const filasValidas = c.filas.filter(f=>f.nombre || f.placa || f.valorSoat || f.comision);
   if(!filasValidas.length){ toast('Agrega al menos una fila antes de guardar'); return; }
+  const anticiposValidos = c.anticipos.filter(a=>a.descripcion || a.valor);
   const datos = {
     fecha,
     filas: filasValidas,
     baseInicial: c.base,
     gasto: c.gasto,
+    anticipos: anticiposValidos,
+    totalAnticipos: c.totAnticipos,
     totalSoat: c.totSoat,
     totalComision: c.totCom,
     totalGeneral: c.totGen,
@@ -1522,16 +1606,22 @@ async function cajaGuardar(){
   renderCajaHistorial();
 }
 
-function cajaEditarRegistro(id){
-  const r = cuadresCaja.find(x=>x.id===id);
-  if(!r) return;
-  cajaEditandoId = id;
+function cajaCargarEnFormulario(r){
   document.getElementById('caja-fecha').value = r.fecha;
   document.getElementById('caja-base').value = r.baseInicial;
   document.getElementById('caja-gasto').value = r.gasto;
   document.getElementById('caja-filas-body').innerHTML='';
   r.filas.forEach(f=>cajaAgregarFila(f.nombre, f.placa, f.valorSoat, f.comision));
+  document.getElementById('caja-anticipos-body').innerHTML='';
+  (r.anticipos||[]).forEach(a=>cajaAgregarAnticipo(a.descripcion, a.valor));
   cajaCalcular();
+}
+
+function cajaEditarRegistro(id){
+  const r = cuadresCaja.find(x=>x.id===id);
+  if(!r) return;
+  cajaEditandoId = id;
+  cajaCargarEnFormulario(r);
   document.getElementById('caja-edit-banner-txt').textContent = 'Editando cuadre del '+r.fecha+' — al guardar se actualizara este registro';
   document.getElementById('caja-edit-banner').style.display='flex';
   document.getElementById('caja-btn-guardar').textContent='Actualizar cuadre';
@@ -1549,13 +1639,89 @@ function cajaVerRegistro(id){
   cajaEditandoId = null;
   document.getElementById('caja-edit-banner').style.display='none';
   document.getElementById('caja-btn-guardar').textContent='Guardar cuadre';
-  document.getElementById('caja-fecha').value = r.fecha;
-  document.getElementById('caja-base').value = r.baseInicial;
-  document.getElementById('caja-gasto').value = r.gasto;
-  document.getElementById('caja-filas-body').innerHTML='';
-  r.filas.forEach(f=>cajaAgregarFila(f.nombre, f.placa, f.valorSoat, f.comision));
-  cajaCalcular();
+  cajaCargarEnFormulario(r);
   toast('Cuadre del '+r.fecha+' cargado');
+}
+
+function cajaConstruirHTMLImpresion(datos){
+  const filas = datos.filas.filter(f=>f.nombre||f.placa||f.valorSoat||f.comision);
+  const anticipos = (datos.anticipos||[]).filter(a=>a.descripcion||a.valor);
+  const filasHtml = filas.map((f,i)=>`
+    <tr>
+      <td>${i+1}</td><td>${f.nombre||''}</td><td>${f.placa||''}</td>
+      <td style="text-align:right">${cajaFmt(f.valorSoat)}</td>
+      <td style="text-align:right">${cajaFmt(f.comision)}</td>
+      <td style="text-align:right">${cajaFmt(f.valorSoat+f.comision)}</td>
+    </tr>`).join('') || `<tr><td colspan="6" style="text-align:center;color:#888">Sin registros</td></tr>`;
+  const anticiposHtml = anticipos.length ? `
+    <h3>Recogidas / Consignaciones anticipadas</h3>
+    <table>
+      <thead><tr><th>No.</th><th>Descripción</th><th style="text-align:right">Valor</th></tr></thead>
+      <tbody>${anticipos.map((a,i)=>`<tr><td>${i+1}</td><td>${a.descripcion||''}</td><td style="text-align:right">${cajaFmt(a.valor)}</td></tr>`).join('')}</tbody>
+      <tfoot><tr style="font-weight:700"><td colspan="2" style="text-align:right">TOTAL ANTICIPADO</td><td style="text-align:right">${cajaFmt(datos.totAnticipos)}</td></tr></tfoot>
+    </table>` : '';
+  return `<!DOCTYPE html><html><head><meta charset="utf-8"><title>Cuadre de Caja - ${datos.fecha}</title>
+  <style>
+    body{font-family:Arial,Helvetica,sans-serif;color:#1c2530;padding:30px;font-size:13px}
+    h1{font-size:18px;margin-bottom:2px}
+    h2{font-size:13px;font-weight:400;color:#555;margin-top:0;margin-bottom:18px}
+    h3{font-size:13px;margin:22px 0 8px}
+    table{width:100%;border-collapse:collapse;margin-bottom:6px}
+    th,td{border:1px solid #d5d9de;padding:6px 8px;font-size:12.5px}
+    th{background:#f2f4f7;text-align:left}
+    tfoot td{background:#f8fafc}
+    .resumen{display:grid;grid-template-columns:repeat(5,1fr);gap:10px;margin-top:20px}
+    .resumen div{border:1px solid #d5d9de;border-radius:6px;padding:10px;text-align:center}
+    .resumen .num{font-size:15px;font-weight:700}
+    .resumen .lbl{font-size:10.5px;color:#666;margin-top:2px}
+    @media print{ body{padding:10px} }
+  </style></head><body>
+    <h1>Cuadre de Caja Diario</h1>
+    <h2>Fecha: <b>${datos.fecha}</b></h2>
+    <h3>Detalle de registros</h3>
+    <table>
+      <thead><tr><th>No.</th><th>Nombre</th><th>Placa</th><th style="text-align:right">Valor SOAT</th><th style="text-align:right">Comisión</th><th style="text-align:right">Total</th></tr></thead>
+      <tbody>${filasHtml}</tbody>
+      <tfoot><tr style="font-weight:700">
+        <td colspan="3" style="text-align:right">TOTAL</td>
+        <td style="text-align:right">${cajaFmt(datos.totSoat)}</td>
+        <td style="text-align:right">${cajaFmt(datos.totCom)}</td>
+        <td style="text-align:right">${cajaFmt(datos.totGen)}</td>
+      </tr></tfoot>
+    </table>
+    ${anticiposHtml}
+    <div class="resumen">
+      <div><div class="num">${cajaFmt(datos.finalDia)}</div><div class="lbl">FINAL DE DÍA</div></div>
+      <div><div class="num">${cajaFmt(datos.base)}</div><div class="lbl">BASE INICIAL</div></div>
+      <div><div class="num">${cajaFmt(datos.gasto)}</div><div class="lbl">GASTO</div></div>
+      <div><div class="num">${cajaFmt(datos.totAnticipos)}</div><div class="lbl">ANTICIPADO</div></div>
+      <div><div class="num">${cajaFmt(datos.consignar)}</div><div class="lbl">CONSIGNAR</div></div>
+    </div>
+  </body></html>`;
+}
+
+function cajaAbrirVentanaImpresion(html){
+  const w = window.open('', '_blank', 'width=850,height=900');
+  if(!w){ toast('El navegador bloqueo la ventana de impresion. Habilita las ventanas emergentes.'); return; }
+  w.document.write(html);
+  w.document.close();
+  w.onload = function(){ w.focus(); w.print(); };
+}
+
+function cajaImprimir(){
+  const c = cajaCalcular();
+  const fecha = document.getElementById('caja-fecha').value || hoyStr;
+  cajaAbrirVentanaImpresion(cajaConstruirHTMLImpresion({...c, fecha}));
+}
+
+function cajaImprimirRegistro(id){
+  const r = cuadresCaja.find(x=>x.id===id);
+  if(!r) return;
+  cajaAbrirVentanaImpresion(cajaConstruirHTMLImpresion({
+    fecha:r.fecha, filas:r.filas, totSoat:r.totalSoat, totCom:r.totalComision, totGen:r.totalGeneral,
+    anticipos:r.anticipos||[], totAnticipos:r.totalAnticipos||0,
+    base:r.baseInicial, gasto:r.gasto, finalDia:r.finalDia, consignar:r.consignar
+  }));
 }
 
 function cajaEliminarRegistro(id){
@@ -1574,10 +1740,11 @@ function renderCajaHistorial(){
   el.innerHTML = `<div style="display:flex;flex-direction:column;gap:6px;max-height:220px;overflow:auto">` +
     ordenados.map(r=>`
       <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;padding:7px 10px;background:var(--surface2);border-radius:6px">
-        <span><b style="color:var(--text)">${r.fecha}</b> — ${r.filas.length} registro(s) — Consignar: <b style="color:var(--activo)">${cajaFmt(r.consignar)}</b></span>
+        <span><b style="color:var(--text)">${r.fecha}</b> — ${r.filas.length} registro(s)${r.totalAnticipos?` — Anticipado: ${cajaFmt(r.totalAnticipos)}`:''} — Consignar: <b style="color:var(--activo)">${cajaFmt(r.consignar)}</b></span>
         <span style="display:flex;gap:10px;flex-shrink:0">
           <button onclick="cajaVerRegistro(${r.id})" style="background:none;border:none;cursor:pointer;color:var(--notif);text-decoration:underline;font-size:12px">Ver</button>
           <button onclick="cajaEditarRegistro(${r.id})" style="background:none;border:none;cursor:pointer;color:var(--accent);text-decoration:underline;font-size:12px">Editar</button>
+          <button onclick="cajaImprimirRegistro(${r.id})" style="background:none;border:none;cursor:pointer;color:var(--text);text-decoration:underline;font-size:12px">Imprimir</button>
           <button onclick="cajaEliminarRegistro(${r.id})" style="background:none;border:none;cursor:pointer;color:var(--vencido);text-decoration:underline;font-size:12px">Eliminar</button>
         </span>
       </div>`).join('') + `</div>`;
