@@ -253,6 +253,10 @@ tbody td{padding:8px 10px;vertical-align:middle}
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="6" width="20" height="12" rx="2"/><circle cx="12" cy="12" r="2"/><path d="M6 12h.01M18 12h.01"/></svg>
             Cuadre de Caja
           </button>
+          <button class="dropdown-item" onclick="togglePanel('cobro-panel');closeToolsMenu()" title="Cuentas de cobro">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="8" y1="13" x2="16" y2="13"/><line x1="8" y1="17" x2="16" y2="17"/></svg>
+            Cuenta de Cobro
+          </button>
           <button class="dropdown-item" onclick="abrirMensajes();closeToolsMenu()">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/></svg>
             Mensajes
@@ -447,6 +451,66 @@ tbody td{padding:8px 10px;vertical-align:middle}
     </div>
   </div>
 
+  <!-- Cuenta de Cobro Panel -->
+  <div class="panel" id="cobro-panel">
+    <h3>Cuenta de Cobro</h3>
+    <div id="cobro-edit-banner" style="display:none;align-items:center;justify-content:space-between;gap:10px;background:#fff8e6;border:1px solid #fcd34d;border-radius:var(--rs);padding:8px 12px;font-size:12px;color:#92400e;margin-bottom:12px">
+      <span id="cobro-edit-banner-txt">Editando cuenta de cobro guardada</span>
+      <button class="btn btn-outline btn-sm" onclick="cobroCancelarEdicion()">Cancelar edición</button>
+    </div>
+
+    <!-- Beneficiario / firmante: fijo, se configura una sola vez -->
+    <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;background:var(--surface2);border:1px solid var(--border);border-radius:var(--rs);padding:10px 12px;margin-bottom:14px">
+      <div style="font-size:12.5px;line-height:1.5">
+        <span style="color:var(--muted)">Beneficiario / firma:</span>
+        <b id="cobro-benef-resumen">Sin configurar</b>
+      </div>
+      <button class="btn btn-outline btn-sm" onclick="abrirModalBeneficiario()">Configurar beneficiario</button>
+    </div>
+
+    <div style="display:grid;grid-template-columns:150px 1fr 1fr;gap:12px;margin-bottom:12px">
+      <div class="field">
+        <label style="display:flex;align-items:center;justify-content:space-between">No. Consecutivo <button type="button" onclick="cobroConfigurarConsecutivo()" style="background:none;border:none;color:var(--notif);cursor:pointer;font-size:10px;text-decoration:underline;text-transform:none;font-weight:400;letter-spacing:0" title="Configurar el numero inicial (una sola vez)">configurar</button></label>
+        <input type="text" id="cobro-consecutivo" readonly style="background:var(--surface2);font-weight:700;cursor:default">
+      </div>
+      <div class="field"><label>Ciudad</label><input type="text" id="cobro-ciudad" value="Santiago de Cali"></div>
+      <div class="field"><label>Fecha</label><input type="date" id="cobro-fecha"></div>
+    </div>
+
+    <div style="display:grid;grid-template-columns:2fr 1fr;gap:12px;margin-bottom:12px">
+      <div class="field"><label>Empresa que debe</label><input type="text" id="cobro-empresa" placeholder="FASSEG AGENCIA DE SEGUROS"></div>
+      <div class="field"><label>NIT</label><input type="text" id="cobro-nit" placeholder="901.623.629-4"></div>
+    </div>
+
+    <div style="display:grid;grid-template-columns:1fr;gap:12px;margin-bottom:6px">
+      <div class="field"><label>Valor</label><input type="number" id="cobro-valor" min="0" step="1" oninput="cobroActualizarLetras()" placeholder="230000"></div>
+    </div>
+    <div style="background:var(--surface2);border:1px solid var(--border);border-radius:var(--rs);padding:9px 12px;font-size:12.5px;margin-bottom:14px">
+      <span style="color:var(--muted)">Valor en letras:</span> <b id="cobro-valor-letras">—</b>
+    </div>
+
+    <div class="field" style="margin-bottom:16px">
+      <label>Por concepto de</label>
+      <textarea id="cobro-concepto" rows="2" style="width:100%;border:1px solid var(--border);border-radius:var(--rs);padding:8px 10px;font-family:inherit;font-size:12.5px;resize:vertical" placeholder="Expedición de veintitres (23) SOAT de Motos Nuevas el día 1 de septiembre de 2026"></textarea>
+    </div>
+
+    <div style="display:flex;gap:8px;margin-bottom:16px">
+      <button class="btn btn-outline" onclick="cobroImprimir()" title="Imprimir o guardar como PDF">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:14px;height:14px"><polyline points="6 9 6 2 18 2 18 9"/><path d="M6 18H4a2 2 0 01-2-2v-5a2 2 0 012-2h16a2 2 0 012 2v5a2 2 0 01-2 2h-2"/><rect x="6" y="14" width="12" height="8"/></svg>
+        Imprimir / PDF
+      </button>
+      <div style="margin-left:auto;display:flex;gap:8px">
+        <button class="btn btn-outline" onclick="cobroNuevo()">Nueva cuenta</button>
+        <button class="btn btn-dark" id="cobro-btn-guardar" onclick="cobroGuardar()">Guardar cuenta</button>
+      </div>
+    </div>
+
+    <div style="border-top:1px solid var(--border);padding-top:12px">
+      <div style="font-size:12px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.4px;margin-bottom:8px">Cuentas de cobro guardadas</div>
+      <div id="cobro-historial" style="font-size:12.5px;color:var(--muted)">Sin cuentas de cobro guardadas.</div>
+    </div>
+  </div>
+
   <!-- Vista de clientes: stats + tabs + tabla (se oculta al abrir Cuadre de Caja) -->
   <div id="clientes-view">
   <!-- Stats -->
@@ -563,6 +627,60 @@ tbody td{padding:8px 10px;vertical-align:middle}
       <div class="modal-foot">
         <button class="btn-cancel" onclick="document.getElementById('modal').style.display='none'">Cancelar</button>
         <button class="btn-save" onclick="guardarCliente()">Guardar</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Modal beneficiario cuenta de cobro (se configura una sola vez) -->
+<div id="modal-beneficiario" style="display:none">
+  <div class="overlay" onclick="co('modal-beneficiario',event)">
+    <div class="modal" style="width:min(640px,100%)" onclick="event.stopPropagation()">
+      <h2>Configurar beneficiario / firma</h2>
+      <p style="font-size:11.5px;color:var(--muted);margin-bottom:14px">Estos datos son fijos: aparecen en "DEBE A" y en la firma de cada cuenta de cobro. Configúralos una sola vez; solo cámbialos si la persona que factura cambia.</p>
+      <div class="field"><label>Nombre completo</label><input id="bf-nombre" type="text" placeholder="Yenci Yilena Camacho"></div>
+      <div class="field"><label>Cédula</label><input id="bf-cedula" type="text" placeholder="1.130.648.670"></div>
+      <div class="field-row">
+        <div class="field"><label>Tipo de cuenta</label>
+          <select id="bf-tipo-cuenta">
+            <option value="Cuenta de Ahorros">Cuenta de Ahorros</option>
+            <option value="Cuenta Corriente">Cuenta Corriente</option>
+          </select>
+        </div>
+        <div class="field"><label>Número de cuenta</label><input id="bf-num-cuenta" type="text" placeholder="3137157557"></div>
+      </div>
+      <div class="field-row">
+        <div class="field"><label>Banco</label><input id="bf-banco" type="text" placeholder="Nequi"></div>
+        <div class="field"><label>Llave Bre-B (opcional)</label><input id="bf-breb" type="text" placeholder="Celular, correo o llave alfanumerica"></div>
+      </div>
+
+      <div class="field">
+        <label>Firma</label>
+        <div style="display:flex;gap:16px;flex-wrap:wrap;align-items:flex-start;border:1px solid var(--border);border-radius:var(--rs);padding:12px;background:var(--surface2)">
+          <div style="flex:1;min-width:200px">
+            <div style="font-size:11.5px;color:var(--muted);margin-bottom:6px">Subir imagen de la firma</div>
+            <input type="file" id="bf-firma-file" accept="image/*" onchange="bfCargarFirmaArchivo(event)">
+            <div style="font-size:11px;color:var(--muted);margin-top:10px">— o dibújala —</div>
+            <canvas id="bf-firma-canvas" width="320" height="120" style="border:1px dashed var(--border);border-radius:6px;background:#fff;touch-action:none;cursor:crosshair;margin-top:6px;max-width:100%"></canvas>
+            <div style="display:flex;gap:8px;margin-top:6px">
+              <button type="button" class="btn btn-outline btn-sm" onclick="bfLimpiarCanvas()">Limpiar</button>
+              <button type="button" class="btn btn-outline btn-sm" onclick="bfUsarDibujo()">Usar este dibujo</button>
+            </div>
+          </div>
+          <div style="flex:1;min-width:160px;text-align:center">
+            <div style="font-size:11.5px;color:var(--muted);margin-bottom:6px">Vista previa</div>
+            <div id="bf-firma-preview-wrap" style="display:none;flex-direction:column;align-items:center;gap:8px">
+              <img id="bf-firma-preview" style="max-width:180px;max-height:100px;border:1px solid var(--border);border-radius:6px;background:#fff;padding:4px">
+              <button type="button" class="btn btn-outline btn-sm" onclick="bfQuitarFirma()">Quitar firma</button>
+            </div>
+            <div id="bf-firma-vacio" style="font-size:11.5px;color:var(--muted)">Sin firma configurada</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="modal-foot">
+        <button class="btn-cancel" onclick="document.getElementById('modal-beneficiario').style.display='none'">Cancelar</button>
+        <button class="btn-save" onclick="guardarBeneficiario()">Guardar</button>
       </div>
     </div>
   </div>
@@ -1123,9 +1241,11 @@ function guardarCliente(){
 function togglePanel(id){
   const p = document.getElementById(id);
   p.classList.toggle('open');
-  if(id==='caja-panel'){
+  if(id==='caja-panel' || id==='cobro-panel'){
     const cv = document.getElementById('clientes-view');
-    cv.style.display = p.classList.contains('open') ? 'none' : '';
+    const cajaOpen = document.getElementById('caja-panel').classList.contains('open');
+    const cobroOpen = document.getElementById('cobro-panel').classList.contains('open');
+    cv.style.display = (cajaOpen||cobroOpen) ? 'none' : '';
   }
 }
 function toggleToolsMenu(e){ e.stopPropagation(); document.getElementById('tools-menu').classList.toggle('open'); }
@@ -1750,6 +1870,389 @@ function renderCajaHistorial(){
       </div>`).join('') + `</div>`;
 }
 
+// ── Cuenta de Cobro (modulo nuevo e independiente) ──────────────────────────────
+let cuentasCobro = [];
+let cobroEditandoId = null;
+let cobroConsecutivoSiguiente = null; // se carga desde crm_config; null = aun no configurado
+let cobroBeneficiario = null; // {nombre,cedula,tipoCuenta,numCuenta,banco} - fijo, se configura una sola vez
+
+function renderBeneficiarioResumen(){
+  const el = document.getElementById('cobro-benef-resumen');
+  if(!el) return;
+  const b = cobroBeneficiario;
+  el.textContent = (b && b.nombre) ? `${b.nombre} — C.C. ${b.cedula||'—'} — ${b.banco||'—'} ${b.numCuenta||''}${b.breb?` — Bre-B: ${b.breb}`:''}`.trim() : 'Sin configurar — haz clic en "Configurar beneficiario"';
+}
+
+let bfFirmaData = null; // dataURL temporal mientras el modal esta abierto
+let bfCanvasCtx = null, bfDibujando = false, bfUltimoPunto = null;
+
+function bfInicializarCanvas(){
+  const canvas = document.getElementById('bf-firma-canvas');
+  bfCanvasCtx = canvas.getContext('2d');
+  bfCanvasCtx.clearRect(0,0,canvas.width,canvas.height);
+  bfCanvasCtx.lineWidth = 2.2;
+  bfCanvasCtx.lineCap = 'round';
+  bfCanvasCtx.strokeStyle = '#1c2530';
+  if(canvas.dataset.bound) return;
+  canvas.dataset.bound = '1';
+  function pos(e){
+    const r = canvas.getBoundingClientRect();
+    const p = e.touches ? e.touches[0] : e;
+    return { x: (p.clientX-r.left)*(canvas.width/r.width), y: (p.clientY-r.top)*(canvas.height/r.height) };
+  }
+  function start(e){ e.preventDefault(); bfDibujando=true; bfUltimoPunto=pos(e); }
+  function move(e){
+    if(!bfDibujando) return; e.preventDefault();
+    const p = pos(e);
+    bfCanvasCtx.beginPath();
+    bfCanvasCtx.moveTo(bfUltimoPunto.x, bfUltimoPunto.y);
+    bfCanvasCtx.lineTo(p.x, p.y);
+    bfCanvasCtx.stroke();
+    bfUltimoPunto = p;
+  }
+  function end(){ bfDibujando=false; }
+  canvas.addEventListener('mousedown', start);
+  canvas.addEventListener('mousemove', move);
+  window.addEventListener('mouseup', end);
+  canvas.addEventListener('touchstart', start, {passive:false});
+  canvas.addEventListener('touchmove', move, {passive:false});
+  canvas.addEventListener('touchend', end);
+}
+
+function bfLimpiarCanvas(){
+  const canvas = document.getElementById('bf-firma-canvas');
+  bfCanvasCtx.clearRect(0,0,canvas.width,canvas.height);
+}
+
+function bfUsarDibujo(){
+  const canvas = document.getElementById('bf-firma-canvas');
+  // Verifica que no este en blanco
+  const ctx = bfCanvasCtx;
+  const datos = ctx.getImageData(0,0,canvas.width,canvas.height).data;
+  let tieneTrazo = false;
+  for(let i=3;i<datos.length;i+=4){ if(datos[i]>0){ tieneTrazo=true; break; } }
+  if(!tieneTrazo){ toast('Dibuja algo primero'); return; }
+  bfFirmaData = canvas.toDataURL('image/png');
+  bfActualizarPreviewFirma();
+  toast('Firma dibujada lista para guardar');
+}
+
+function bfCargarFirmaArchivo(e){
+  const file = e.target.files[0];
+  if(!file) return;
+  const reader = new FileReader();
+  reader.onload = function(ev){
+    const img = new Image();
+    img.onload = function(){
+      // Reescala para no guardar imagenes gigantes
+      const maxW = 400;
+      const escala = Math.min(1, maxW/img.width);
+      const c = document.createElement('canvas');
+      c.width = img.width*escala; c.height = img.height*escala;
+      const cx = c.getContext('2d');
+      cx.drawImage(img, 0, 0, c.width, c.height);
+      bfFirmaData = c.toDataURL('image/png');
+      bfActualizarPreviewFirma();
+      toast('Firma cargada');
+    };
+    img.src = ev.target.result;
+  };
+  reader.readAsDataURL(file);
+  e.target.value='';
+}
+
+function bfQuitarFirma(){
+  bfFirmaData = null;
+  bfActualizarPreviewFirma();
+}
+
+function bfActualizarPreviewFirma(){
+  const wrap = document.getElementById('bf-firma-preview-wrap');
+  const vacio = document.getElementById('bf-firma-vacio');
+  const img = document.getElementById('bf-firma-preview');
+  if(bfFirmaData){
+    img.src = bfFirmaData;
+    wrap.style.display='flex';
+    vacio.style.display='none';
+  } else {
+    wrap.style.display='none';
+    vacio.style.display='block';
+  }
+}
+
+function abrirModalBeneficiario(){
+  const b = cobroBeneficiario || {};
+  document.getElementById('bf-nombre').value = b.nombre||'';
+  document.getElementById('bf-cedula').value = b.cedula||'';
+  document.getElementById('bf-tipo-cuenta').value = b.tipoCuenta||'Cuenta de Ahorros';
+  document.getElementById('bf-num-cuenta').value = b.numCuenta||'';
+  document.getElementById('bf-banco').value = b.banco||'';
+  document.getElementById('bf-breb').value = b.breb||'';
+  bfFirmaData = b.firma||null;
+  document.getElementById('modal-beneficiario').style.display='block';
+  setTimeout(()=>{ bfInicializarCanvas(); bfLimpiarCanvas(); bfActualizarPreviewFirma(); },30);
+}
+
+async function guardarBeneficiario(){
+  const nombre = document.getElementById('bf-nombre').value.trim();
+  const cedula = document.getElementById('bf-cedula').value.trim();
+  if(!nombre || !cedula){ alert('Completa al menos el nombre y la cedula del beneficiario.'); return; }
+  cobroBeneficiario = {
+    nombre, cedula,
+    tipoCuenta: document.getElementById('bf-tipo-cuenta').value,
+    numCuenta: document.getElementById('bf-num-cuenta').value.trim(),
+    banco: document.getElementById('bf-banco').value.trim(),
+    breb: document.getElementById('bf-breb').value.trim(),
+    firma: bfFirmaData || null,
+  };
+  lsSet('crm_cobro_beneficiario', cobroBeneficiario);
+  await dbGuardar('cobro_beneficiario', cobroBeneficiario);
+  renderBeneficiarioResumen();
+  document.getElementById('modal-beneficiario').style.display='none';
+  toast('Beneficiario configurado ✔');
+}
+
+const CC_UNIDADES=['','uno','dos','tres','cuatro','cinco','seis','siete','ocho','nueve'];
+const CC_ESPECIALES=['diez','once','doce','trece','catorce','quince','dieciséis','diecisiete','dieciocho','diecinueve'];
+const CC_DECENAS=['','','veinte','treinta','cuarenta','cincuenta','sesenta','setenta','ochenta','noventa'];
+const CC_CENTENAS=['','ciento','doscientos','trescientos','cuatrocientos','quinientos','seiscientos','setecientos','ochocientos','novecientos'];
+
+function ccConvertirDecenas(n){
+  if(n<10) return CC_UNIDADES[n];
+  if(n<20) return CC_ESPECIALES[n-10];
+  const dec=Math.floor(n/10), uni=n%10;
+  if(dec===2) return uni===0?'veinte':'veinti'+CC_UNIDADES[uni];
+  if(uni===0) return CC_DECENAS[dec];
+  return CC_DECENAS[dec]+' y '+CC_UNIDADES[uni];
+}
+function ccConvertirCentenas(n){
+  if(n===0) return '';
+  if(n===100) return 'cien';
+  const cen=Math.floor(n/100), resto=n%100;
+  let s='';
+  if(cen>0) s+=CC_CENTENAS[cen];
+  if(resto>0) s+=(s?' ':'')+ccConvertirDecenas(resto);
+  return s;
+}
+function numeroALetras(num){
+  num=Math.floor(Math.abs(Number(num)||0));
+  if(num===0) return 'cero';
+  const millones=Math.floor(num/1000000);
+  const miles=Math.floor((num%1000000)/1000);
+  const resto=num%1000;
+  let partes=[];
+  if(millones>0) partes.push(millones===1?'un millón':ccConvertirCentenas(millones)+' millones');
+  if(miles>0) partes.push(miles===1?'mil':ccConvertirCentenas(miles)+' mil');
+  if(resto>0) partes.push(ccConvertirCentenas(resto));
+  return partes.join(' ').trim();
+}
+function ccCapitaliza(s){ return s.charAt(0).toUpperCase()+s.slice(1); }
+function cobroValorEnLetras(valor){
+  const v = Math.floor(Number(valor)||0);
+  return ccCapitaliza(numeroALetras(v))+' pesos ($'+v.toLocaleString('es-CO')+')';
+}
+
+function cobroActualizarLetras(){
+  const valor = document.getElementById('cobro-valor').value;
+  document.getElementById('cobro-valor-letras').textContent = valor ? cobroValorEnLetras(valor) : '—';
+}
+
+function cobroProximoConsecutivo(){
+  if(cobroConsecutivoSiguiente!=null) return cobroConsecutivoSiguiente;
+  // Primera vez que se usa el modulo y no se ha configurado nada: calcula a partir de lo guardado (o 116 por defecto)
+  const max = cuentasCobro.reduce((m,c)=>Math.max(m, Number(c.consecutivo)||0), 115);
+  return max+1;
+}
+
+async function cobroGuardarConsecutivoSiguiente(n){
+  cobroConsecutivoSiguiente = n;
+  lsSet('crm_cobro_consecutivo', n);
+  await dbGuardar('cuentas_cobro_consecutivo', n);
+}
+
+function cobroConfigurarConsecutivo(){
+  const actual = cobroProximoConsecutivo();
+  const entrada = prompt('Configura el numero de la PROXIMA cuenta de cobro a generar.\n\nUsa esto solo una vez para arrancar el consecutivo; despues de cada cuenta guardada aumentara automaticamente.', actual);
+  if(entrada===null) return;
+  const n = parseInt(entrada);
+  if(!n || n<1){ toast('Numero invalido'); return; }
+  cobroGuardarConsecutivoSiguiente(n);
+  document.getElementById('cobro-consecutivo').value = n;
+  toast('Consecutivo configurado: la proxima cuenta sera la No. '+n);
+}
+
+function cobroNuevo(){
+  cobroEditandoId = null;
+  document.getElementById('cobro-edit-banner').style.display='none';
+  document.getElementById('cobro-btn-guardar').textContent='Guardar cuenta';
+  document.getElementById('cobro-consecutivo').value = cobroProximoConsecutivo();
+  document.getElementById('cobro-ciudad').value = 'Santiago de Cali';
+  document.getElementById('cobro-fecha').value = hoyStr;
+  document.getElementById('cobro-empresa').value='';
+  document.getElementById('cobro-nit').value='';
+  document.getElementById('cobro-valor').value='';
+  document.getElementById('cobro-concepto').value='';
+  cobroActualizarLetras();
+}
+
+function cobroLeerFormulario(){
+  const b = cobroBeneficiario||{};
+  return {
+    consecutivo: Number(document.getElementById('cobro-consecutivo').value)||cobroProximoConsecutivo(),
+    ciudad: document.getElementById('cobro-ciudad').value.trim()||'Santiago de Cali',
+    fecha: document.getElementById('cobro-fecha').value || hoyStr,
+    empresa: document.getElementById('cobro-empresa').value.trim(),
+    nit: document.getElementById('cobro-nit').value.trim(),
+    valor: Number(document.getElementById('cobro-valor').value)||0,
+    concepto: document.getElementById('cobro-concepto').value.trim(),
+    // Snapshot del beneficiario/firma en el momento de guardar (no cambia si luego se reconfigura)
+    nombre: b.nombre||'', cedula: b.cedula||'', tipoCuenta: b.tipoCuenta||'Cuenta de Ahorros',
+    numCuenta: b.numCuenta||'', banco: b.banco||'', breb: b.breb||'', firma: b.firma||null,
+  };
+}
+
+function cobroCargarEnFormulario(r){
+  document.getElementById('cobro-consecutivo').value = r.consecutivo;
+  document.getElementById('cobro-ciudad').value = r.ciudad;
+  document.getElementById('cobro-fecha').value = r.fecha;
+  document.getElementById('cobro-empresa').value = r.empresa||'';
+  document.getElementById('cobro-nit').value = r.nit||'';
+  document.getElementById('cobro-valor').value = r.valor;
+  document.getElementById('cobro-concepto').value = r.concepto;
+  cobroActualizarLetras();
+}
+
+async function cobroGuardar(){
+  if(!cobroBeneficiario || !cobroBeneficiario.nombre){ toast('Primero configura el beneficiario / firma'); abrirModalBeneficiario(); return; }
+  const datos = cobroLeerFormulario();
+  if(!datos.empresa || !datos.valor){ toast('Completa al menos la empresa y el valor'); return; }
+  datos.guardadoEn = new Date().toISOString();
+  const esNuevo = !cobroEditandoId;
+  if(cobroEditandoId){
+    const idx = cuentasCobro.findIndex(x=>x.id===cobroEditandoId);
+    if(idx>-1){ cuentasCobro[idx] = {...cuentasCobro[idx], ...datos}; toast('Cuenta de cobro actualizada ✔'); }
+    else { cuentasCobro.unshift({id:Date.now(), ...datos}); toast('Cuenta de cobro guardada ✔'); }
+  } else {
+    cuentasCobro.unshift({id:Date.now(), ...datos});
+    toast('Cuenta de cobro No. '+datos.consecutivo+' guardada ✔');
+  }
+  lsSet('crm_cuentas_cobro', cuentasCobro);
+  await dbGuardar('cuentas_cobro', cuentasCobro);
+  if(esNuevo){
+    // Avanza el consecutivo automaticamente para la siguiente cuenta
+    await cobroGuardarConsecutivoSiguiente(datos.consecutivo+1);
+  }
+  cobroEditandoId = null;
+  document.getElementById('cobro-edit-banner').style.display='none';
+  document.getElementById('cobro-btn-guardar').textContent='Guardar cuenta';
+  renderCobroHistorial();
+  cobroNuevo();
+}
+
+function cobroEditarRegistro(id){
+  const r = cuentasCobro.find(x=>x.id===id);
+  if(!r) return;
+  cobroEditandoId = id;
+  cobroCargarEnFormulario(r);
+  document.getElementById('cobro-edit-banner-txt').textContent = 'Editando cuenta de cobro No. '+r.consecutivo+' — al guardar se actualizara este registro';
+  document.getElementById('cobro-edit-banner').style.display='flex';
+  document.getElementById('cobro-btn-guardar').textContent='Actualizar cuenta';
+  toast('Editando cuenta de cobro No. '+r.consecutivo);
+}
+
+function cobroCancelarEdicion(){ cobroNuevo(); toast('Edicion cancelada'); }
+
+function cobroVerRegistro(id){
+  const r = cuentasCobro.find(x=>x.id===id);
+  if(!r) return;
+  cobroEditandoId = null;
+  document.getElementById('cobro-edit-banner').style.display='none';
+  document.getElementById('cobro-btn-guardar').textContent='Guardar cuenta';
+  cobroCargarEnFormulario(r);
+  toast('Cuenta de cobro No. '+r.consecutivo+' cargada');
+}
+
+function cobroEliminarRegistro(id){
+  if(!confirm('¿Eliminar esta cuenta de cobro? Esta accion no se puede deshacer.')) return;
+  cuentasCobro = cuentasCobro.filter(x=>x.id!==id);
+  lsSet('crm_cuentas_cobro', cuentasCobro);
+  dbGuardar('cuentas_cobro', cuentasCobro);
+  if(cobroEditandoId===id) cobroCancelarEdicion();
+  renderCobroHistorial();
+}
+
+function renderCobroHistorial(){
+  const el = document.getElementById('cobro-historial');
+  if(!cuentasCobro.length){ el.textContent='Sin cuentas de cobro guardadas.'; return; }
+  const ordenados = [...cuentasCobro].sort((a,b)=> (b.consecutivo||0)-(a.consecutivo||0));
+  el.innerHTML = `<div style="display:flex;flex-direction:column;gap:6px;max-height:220px;overflow:auto">` +
+    ordenados.map(r=>`
+      <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;padding:7px 10px;background:var(--surface2);border-radius:6px">
+        <span><b style="color:var(--text)">No. ${r.consecutivo}</b> — ${r.empresa||'—'} — ${r.fecha} — <b style="color:var(--activo)">$${Number(r.valor||0).toLocaleString('es-CO')}</b></span>
+        <span style="display:flex;gap:10px;flex-shrink:0">
+          <button onclick="cobroVerRegistro(${r.id})" style="background:none;border:none;cursor:pointer;color:var(--notif);text-decoration:underline;font-size:12px">Ver</button>
+          <button onclick="cobroEditarRegistro(${r.id})" style="background:none;border:none;cursor:pointer;color:var(--accent);text-decoration:underline;font-size:12px">Editar</button>
+          <button onclick="cobroImprimirRegistro(${r.id})" style="background:none;border:none;cursor:pointer;color:var(--text);text-decoration:underline;font-size:12px">Imprimir</button>
+          <button onclick="cobroEliminarRegistro(${r.id})" style="background:none;border:none;cursor:pointer;color:var(--vencido);text-decoration:underline;font-size:12px">Eliminar</button>
+        </span>
+      </div>`).join('') + `</div>`;
+}
+
+function cobroConstruirHTMLImpresion(d){
+  const valorLetras = ccCapitaliza(numeroALetras(d.valor));
+  const valorFmt = Number(d.valor||0).toLocaleString('es-CO');
+  const fechaFmt = (()=>{ try{ const[y,m,day]=d.fecha.split('-'); return day+'-'+m+'-'+y; }catch(e){ return d.fecha; } })();
+  return `<!DOCTYPE html><html><head><meta charset="utf-8"><title>Cuenta de Cobro No. ${d.consecutivo}</title>
+  <style>
+    body{font-family:Arial,Helvetica,sans-serif;color:#111;padding:50px 60px;font-size:14px;line-height:1.7;text-align:center}
+    .fecha{text-align:center;margin-bottom:26px}
+    h1{font-size:16px;margin:0 0 26px;letter-spacing:.5px}
+    .empresa{font-weight:700}
+    .nit{margin-bottom:22px}
+    .firma{margin-top:70px;display:flex;flex-direction:column;align-items:center}
+    .firma img{margin-bottom:-6px;position:relative;z-index:1}
+    .linea{border-bottom:1px solid #111;width:260px;margin-bottom:6px}
+    .declaracion{margin-top:34px;font-size:12px;color:#333;max-width:520px;margin-left:auto;margin-right:auto}
+    @media print{ body{padding:20px 40px} }
+  </style></head><body>
+    <div class="fecha">${d.ciudad}, ${fechaFmt}</div>
+    <h1>CUENTA DE COBRO No. ${d.consecutivo}</h1>
+    <div class="empresa">${(d.empresa||'').toUpperCase()}</div>
+    <div class="nit">NIT ${d.nit||''}</div>
+    <div>DEBE A:</div>
+    <div style="font-weight:700;margin:4px 0 18px">${(d.nombre||'').toUpperCase()}</div>
+    <div style="margin-bottom:18px">C.C. ${d.cedula||''}</div>
+    <div>La suma de:</div>
+    <div style="font-weight:700;margin:4px 0 18px">${valorLetras} pesos ($${valorFmt})</div>
+    <div>Por concepto de:</div>
+    <div style="margin:4px 0 18px">${d.concepto||''}</div>
+    <div style="margin-bottom:40px">Favor consignar en la ${d.tipoCuenta}, No. ${d.numCuenta||''} del Banco ${d.banco||''}, de la cual soy titular.${d.breb?`<br>También puede transferir a la llave Bre-B: <b>${d.breb}</b>`:''}</div>
+    <div class="firma">
+      ${d.firma ? `<img src="${d.firma}" style="max-width:220px;max-height:95px;display:block;margin:0 auto">` : ''}
+      <div class="linea"></div>
+      <div style="font-weight:700">${(d.nombre||'').toUpperCase()}</div>
+      <div>CC. ${d.cedula||''}</div>
+    </div>
+    <div class="declaracion">
+      Declaro bajo gravedad de juramento que no he contratado más de dos empleados a mi nombre y la prestación de mis servicios son personales.<br>
+      No sujeta a retención en la fuente ingresos mensuales inferior a 87 UVT (Art. 383.E.T.)
+    </div>
+  </body></html>`;
+}
+
+function cobroImprimir(){
+  if(!cobroBeneficiario || !cobroBeneficiario.nombre){ toast('Primero configura el beneficiario / firma'); abrirModalBeneficiario(); return; }
+  const d = cobroLeerFormulario();
+  if(!d.empresa || !d.valor){ toast('Completa al menos la empresa y el valor antes de imprimir'); return; }
+  cajaAbrirVentanaImpresion(cobroConstruirHTMLImpresion(d));
+}
+
+function cobroImprimirRegistro(id){
+  const r = cuentasCobro.find(x=>x.id===id);
+  if(!r) return;
+  cajaAbrirVentanaImpresion(cobroConstruirHTMLImpresion(r));
+}
+
 // ── Inicializacion desde Supabase ──────────────────────────────────────────────
 async function inicializar(){
   _initSB(); // init Supabase after SDK is loaded
@@ -1766,10 +2269,16 @@ async function inicializar(){
     if(cfg.vendedores) vendedores = cfg.vendedores;
     if(cfg.mensajes)   mensajes   = cfg.mensajes;
     if(cfg.cuadres_caja) cuadresCaja = cfg.cuadres_caja;
+    if(cfg.cuentas_cobro) cuentasCobro = cfg.cuentas_cobro;
+    if(cfg.cuentas_cobro_consecutivo!=null) cobroConsecutivoSiguiente = cfg.cuentas_cobro_consecutivo;
+    if(cfg.cobro_beneficiario) cobroBeneficiario = cfg.cobro_beneficiario;
     // Cache offline
     lsSet('crm_clientes',clientes); lsSet('crm_servicios',servicios);
     lsSet('crm_ciudades',ciudades); lsSet('crm_vendedores',vendedores);
     lsSet('crm_mensajes',mensajes); lsSet('crm_cuadres_caja',cuadresCaja);
+    lsSet('crm_cuentas_cobro',cuentasCobro);
+    if(cobroConsecutivoSiguiente!=null) lsSet('crm_cobro_consecutivo',cobroConsecutivoSiguiente);
+    if(cobroBeneficiario) lsSet('crm_cobro_beneficiario',cobroBeneficiario);
     mostrarConexion('online');
   } else {
     // Fallback offline
@@ -1780,11 +2289,15 @@ async function inicializar(){
     const lsV=lsGet('crm_vendedores',null);if(lsV) vendedores=lsV;
     const lsM=lsGet('crm_mensajes',null);  if(lsM) mensajes=lsM;
     const lsCaja=lsGet('crm_cuadres_caja',null); if(lsCaja) cuadresCaja=lsCaja;
+    const lsCobro=lsGet('crm_cuentas_cobro',null); if(lsCobro) cuentasCobro=lsCobro;
+    const lsCobroConsec=lsGet('crm_cobro_consecutivo',null); if(lsCobroConsec!=null) cobroConsecutivoSiguiente=lsCobroConsec;
+    const lsBenef=lsGet('crm_cobro_beneficiario',null); if(lsBenef) cobroBeneficiario=lsBenef;
     mostrarConexion(_sb ? 'error' : 'config');
   }
 
   poblarFiltros(); renderTags(); render(); renderHistorial(); actualizarUltimaCopia();
   renderCajaHistorial(); cajaNuevo();
+  renderCobroHistorial(); cobroNuevo(); renderBeneficiarioResumen();
 
   // Auto-refresh cada 20 segundos para ver cambios de otros usuarios
   if(SUPABASE_URL){
@@ -1797,6 +2310,9 @@ async function inicializar(){
         if(d.vendedores)vendedores=d.vendedores;
         if(d.mensajes)mensajes=d.mensajes;
         if(d.cuadres_caja){cuadresCaja=d.cuadres_caja;renderCajaHistorial();}
+        if(d.cuentas_cobro){cuentasCobro=d.cuentas_cobro;renderCobroHistorial();}
+        if(d.cuentas_cobro_consecutivo!=null){cobroConsecutivoSiguiente=d.cuentas_cobro_consecutivo;}
+        if(d.cobro_beneficiario){cobroBeneficiario=d.cobro_beneficiario;renderBeneficiarioResumen();}
         poblarFiltros();renderTags();render();
         mostrarConexion('online');
       }
