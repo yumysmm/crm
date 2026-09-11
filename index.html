@@ -459,18 +459,20 @@ tbody td{padding:8px 10px;vertical-align:middle}
       <button class="btn btn-outline btn-sm" onclick="cobroCancelarEdicion()">Cancelar edición</button>
     </div>
 
-    <!-- Beneficiario / firmante: fijo, se configura una sola vez -->
-    <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;background:var(--surface2);border:1px solid var(--border);border-radius:var(--rs);padding:10px 12px;margin-bottom:14px">
-      <div style="font-size:12.5px;line-height:1.5">
-        <span style="color:var(--muted)">Beneficiario / firma:</span>
-        <b id="cobro-benef-resumen">Sin configurar</b>
+    <!-- Beneficiario / firmante: se pueden configurar varios, se elige uno por cuenta -->
+    <div style="display:flex;align-items:flex-end;gap:10px;background:var(--surface2);border:1px solid var(--border);border-radius:var(--rs);padding:10px 12px;margin-bottom:6px;flex-wrap:wrap">
+      <div class="field" style="margin:0;flex:1;min-width:220px">
+        <label>Beneficiario / firma para esta cuenta</label>
+        <select id="cobro-benef-select" onchange="cobroSeleccionarBeneficiario()"></select>
       </div>
-      <button class="btn btn-outline btn-sm" onclick="abrirModalBeneficiario()">Configurar beneficiario</button>
+      <button class="btn btn-outline btn-sm" onclick="abrirModalBeneficiario(cobroBeneficiarioActivoId)">Editar</button>
+      <button class="btn btn-outline btn-sm" onclick="abrirModalBeneficiario(null)">+ Nuevo beneficiario</button>
     </div>
+    <div id="cobro-benef-resumen" style="font-size:11px;color:var(--muted);margin:0 0 14px 2px">Sin beneficiarios configurados.</div>
 
     <div style="display:grid;grid-template-columns:150px 1fr 1fr;gap:12px;margin-bottom:12px">
       <div class="field">
-        <label style="display:flex;align-items:center;justify-content:space-between">No. Consecutivo <button type="button" onclick="cobroConfigurarConsecutivo()" style="background:none;border:none;color:var(--notif);cursor:pointer;font-size:10px;text-decoration:underline;text-transform:none;font-weight:400;letter-spacing:0" title="Configurar el numero inicial (una sola vez)">configurar</button></label>
+        <label>No. Consecutivo</label>
         <input type="text" id="cobro-consecutivo" readonly style="background:var(--surface2);font-weight:700;cursor:default">
       </div>
       <div class="field"><label>Ciudad</label><input type="text" id="cobro-ciudad" value="Santiago de Cali"></div>
@@ -632,13 +634,17 @@ tbody td{padding:8px 10px;vertical-align:middle}
   </div>
 </div>
 
-<!-- Modal beneficiario cuenta de cobro (se configura una sola vez) -->
+<!-- Modal beneficiario cuenta de cobro (permite varios) -->
 <div id="modal-beneficiario" style="display:none">
   <div class="overlay" onclick="co('modal-beneficiario',event)">
     <div class="modal" style="width:min(640px,100%)" onclick="event.stopPropagation()">
-      <h2>Configurar beneficiario / firma</h2>
-      <p style="font-size:11.5px;color:var(--muted);margin-bottom:14px">Estos datos son fijos: aparecen en "DEBE A" y en la firma de cada cuenta de cobro. Configúralos una sola vez; solo cámbialos si la persona que factura cambia.</p>
-      <div class="field"><label>Nombre completo</label><input id="bf-nombre" type="text" placeholder="Yenci Yilena Camacho"></div>
+      <h2 id="bf-modal-titulo">Nuevo beneficiario</h2>
+      <p style="font-size:11.5px;color:var(--muted);margin-bottom:14px">Estos datos aparecen en "DEBE A" y en la firma de la cuenta de cobro. Puedes tener varios beneficiarios y elegir con cuál generar cada cuenta.</p>
+      <input type="hidden" id="bf-id">
+      <div class="field-row">
+        <div class="field"><label>Nombre completo</label><input id="bf-nombre" type="text" placeholder="Yenci Yilena Camacho"></div>
+        <div class="field"><label>No. próxima cuenta</label><input id="bf-consecutivo" type="number" min="1" title="Numero de la proxima cuenta de cobro para este beneficiario. Luego de guardar cada cuenta, aumenta solo."></div>
+      </div>
       <div class="field"><label>Cédula</label><input id="bf-cedula" type="text" placeholder="1.130.648.670"></div>
       <div class="field-row">
         <div class="field"><label>Tipo de cuenta</label>
@@ -679,6 +685,8 @@ tbody td{padding:8px 10px;vertical-align:middle}
       </div>
 
       <div class="modal-foot">
+        <button class="btn-cancel" onclick="cobroEliminarBeneficiarioActual()" id="bf-btn-eliminar" style="color:var(--vencido);display:none">Eliminar beneficiario</button>
+        <div style="flex:1"></div>
         <button class="btn-cancel" onclick="document.getElementById('modal-beneficiario').style.display='none'">Cancelar</button>
         <button class="btn-save" onclick="guardarBeneficiario()">Guardar</button>
       </div>
@@ -1873,14 +1881,37 @@ function renderCajaHistorial(){
 // ── Cuenta de Cobro (modulo nuevo e independiente) ──────────────────────────────
 let cuentasCobro = [];
 let cobroEditandoId = null;
-let cobroConsecutivoSiguiente = null; // se carga desde crm_config; null = aun no configurado
-let cobroBeneficiario = null; // {nombre,cedula,tipoCuenta,numCuenta,banco} - fijo, se configura una sola vez
+let cobroBeneficiarios = []; // [{id,nombre,cedula,tipoCuenta,numCuenta,banco,breb,firma,consecutivoSiguiente}]
+let cobroBeneficiarioActivoId = null; // beneficiario elegido para la cuenta actual
+
+function cobroGetBeneficiario(id){ return cobroBeneficiarios.find(b=>b.id===id) || null; }
+function cobroBeneficiarioActivo(){ return cobroGetBeneficiario(cobroBeneficiarioActivoId); }
+
+function renderBeneficiarioSelect(){
+  const sel = document.getElementById('cobro-benef-select');
+  if(!sel) return;
+  if(!cobroBeneficiarios.length){
+    sel.innerHTML = `<option value="">Sin beneficiarios — crea uno</option>`;
+    cobroBeneficiarioActivoId = null;
+  } else {
+    if(!cobroGetBeneficiario(cobroBeneficiarioActivoId)) cobroBeneficiarioActivoId = cobroBeneficiarios[0].id;
+    sel.innerHTML = cobroBeneficiarios.map(b=>`<option value="${b.id}" ${b.id===cobroBeneficiarioActivoId?'selected':''}>${b.nombre}</option>`).join('');
+  }
+  renderBeneficiarioResumen();
+}
+
+function cobroSeleccionarBeneficiario(){
+  const sel = document.getElementById('cobro-benef-select');
+  cobroBeneficiarioActivoId = sel.value ? Number(sel.value) : null;
+  renderBeneficiarioResumen();
+  document.getElementById('cobro-consecutivo').value = cobroProximoConsecutivo();
+}
 
 function renderBeneficiarioResumen(){
   const el = document.getElementById('cobro-benef-resumen');
   if(!el) return;
-  const b = cobroBeneficiario;
-  el.textContent = (b && b.nombre) ? `${b.nombre} — C.C. ${b.cedula||'—'} — ${b.banco||'—'} ${b.numCuenta||''}${b.breb?` — Bre-B: ${b.breb}`:''}`.trim() : 'Sin configurar — haz clic en "Configurar beneficiario"';
+  const b = cobroBeneficiarioActivo();
+  el.textContent = b ? `${b.nombre} — C.C. ${b.cedula||'—'} — ${b.banco||'—'} ${b.numCuenta||''}${b.breb?` — Bre-B: ${b.breb}`:''}`.trim() : 'Sin beneficiarios configurados — crea uno con "+ Nuevo beneficiario".';
 }
 
 let bfFirmaData = null; // dataURL temporal mientras el modal esta abierto
@@ -1926,7 +1957,6 @@ function bfLimpiarCanvas(){
 
 function bfUsarDibujo(){
   const canvas = document.getElementById('bf-firma-canvas');
-  // Verifica que no este en blanco
   const ctx = bfCanvasCtx;
   const datos = ctx.getImageData(0,0,canvas.width,canvas.height).data;
   let tieneTrazo = false;
@@ -1944,7 +1974,6 @@ function bfCargarFirmaArchivo(e){
   reader.onload = function(ev){
     const img = new Image();
     img.onload = function(){
-      // Reescala para no guardar imagenes gigantes
       const maxW = 400;
       const escala = Math.min(1, maxW/img.width);
       const c = document.createElement('canvas');
@@ -1980,15 +2009,24 @@ function bfActualizarPreviewFirma(){
   }
 }
 
-function abrirModalBeneficiario(){
-  const b = cobroBeneficiario || {};
-  document.getElementById('bf-nombre').value = b.nombre||'';
-  document.getElementById('bf-cedula').value = b.cedula||'';
-  document.getElementById('bf-tipo-cuenta').value = b.tipoCuenta||'Cuenta de Ahorros';
-  document.getElementById('bf-num-cuenta').value = b.numCuenta||'';
-  document.getElementById('bf-banco').value = b.banco||'';
-  document.getElementById('bf-breb').value = b.breb||'';
-  bfFirmaData = b.firma||null;
+function cobroSiguienteConsecutivoSugerido(){
+  const max = cuentasCobro.reduce((m,c)=>Math.max(m, Number(c.consecutivo)||0), 0);
+  return max+1;
+}
+
+function abrirModalBeneficiario(id){
+  const b = id ? cobroGetBeneficiario(id) : null;
+  document.getElementById('bf-modal-titulo').textContent = b ? 'Editar beneficiario' : 'Nuevo beneficiario';
+  document.getElementById('bf-id').value = b ? b.id : '';
+  document.getElementById('bf-nombre').value = b?.nombre||'';
+  document.getElementById('bf-cedula').value = b?.cedula||'';
+  document.getElementById('bf-consecutivo').value = b ? b.consecutivoSiguiente : cobroSiguienteConsecutivoSugerido();
+  document.getElementById('bf-tipo-cuenta').value = b?.tipoCuenta||'Cuenta de Ahorros';
+  document.getElementById('bf-num-cuenta').value = b?.numCuenta||'';
+  document.getElementById('bf-banco').value = b?.banco||'';
+  document.getElementById('bf-breb').value = b?.breb||'';
+  document.getElementById('bf-btn-eliminar').style.display = b ? 'block' : 'none';
+  bfFirmaData = b?.firma||null;
   document.getElementById('modal-beneficiario').style.display='block';
   setTimeout(()=>{ bfInicializarCanvas(); bfLimpiarCanvas(); bfActualizarPreviewFirma(); },30);
 }
@@ -1997,19 +2035,50 @@ async function guardarBeneficiario(){
   const nombre = document.getElementById('bf-nombre').value.trim();
   const cedula = document.getElementById('bf-cedula').value.trim();
   if(!nombre || !cedula){ alert('Completa al menos el nombre y la cedula del beneficiario.'); return; }
-  cobroBeneficiario = {
+  const idStr = document.getElementById('bf-id').value;
+  const consecutivo = parseInt(document.getElementById('bf-consecutivo').value)||1;
+  const datos = {
     nombre, cedula,
     tipoCuenta: document.getElementById('bf-tipo-cuenta').value,
     numCuenta: document.getElementById('bf-num-cuenta').value.trim(),
     banco: document.getElementById('bf-banco').value.trim(),
     breb: document.getElementById('bf-breb').value.trim(),
     firma: bfFirmaData || null,
+    consecutivoSiguiente: consecutivo,
   };
-  lsSet('crm_cobro_beneficiario', cobroBeneficiario);
-  await dbGuardar('cobro_beneficiario', cobroBeneficiario);
-  renderBeneficiarioResumen();
+  if(idStr){
+    const idx = cobroBeneficiarios.findIndex(b=>b.id===Number(idStr));
+    if(idx>-1) cobroBeneficiarios[idx] = {...cobroBeneficiarios[idx], ...datos};
+    toast('Beneficiario actualizado ✔');
+  } else {
+    const nuevo = {id:Date.now(), ...datos};
+    cobroBeneficiarios.push(nuevo);
+    cobroBeneficiarioActivoId = nuevo.id;
+    toast('Beneficiario creado ✔');
+  }
+  await cobroGuardarBeneficiarios();
+  renderBeneficiarioSelect();
+  document.getElementById('cobro-consecutivo').value = cobroProximoConsecutivo();
   document.getElementById('modal-beneficiario').style.display='none';
-  toast('Beneficiario configurado ✔');
+}
+
+function cobroEliminarBeneficiarioActual(){
+  const idStr = document.getElementById('bf-id').value;
+  if(!idStr) return;
+  const id = Number(idStr);
+  if(!confirm('¿Eliminar este beneficiario? Las cuentas de cobro ya guardadas con el conservan sus datos, pero no podras volver a elegirlo.')) return;
+  cobroBeneficiarios = cobroBeneficiarios.filter(b=>b.id!==id);
+  if(cobroBeneficiarioActivoId===id) cobroBeneficiarioActivoId = cobroBeneficiarios[0]?.id || null;
+  cobroGuardarBeneficiarios();
+  renderBeneficiarioSelect();
+  document.getElementById('cobro-consecutivo').value = cobroProximoConsecutivo();
+  document.getElementById('modal-beneficiario').style.display='none';
+  toast('Beneficiario eliminado');
+}
+
+async function cobroGuardarBeneficiarios(){
+  lsSet('crm_cobro_beneficiarios', cobroBeneficiarios);
+  await dbGuardar('cobro_beneficiarios', cobroBeneficiarios);
 }
 
 const CC_UNIDADES=['','uno','dos','tres','cuatro','cinco','seis','siete','ocho','nueve'];
@@ -2058,27 +2127,15 @@ function cobroActualizarLetras(){
 }
 
 function cobroProximoConsecutivo(){
-  if(cobroConsecutivoSiguiente!=null) return cobroConsecutivoSiguiente;
-  // Primera vez que se usa el modulo y no se ha configurado nada: calcula a partir de lo guardado (o 116 por defecto)
-  const max = cuentasCobro.reduce((m,c)=>Math.max(m, Number(c.consecutivo)||0), 115);
-  return max+1;
+  const b = cobroBeneficiarioActivo();
+  return b ? b.consecutivoSiguiente : '—';
 }
 
-async function cobroGuardarConsecutivoSiguiente(n){
-  cobroConsecutivoSiguiente = n;
-  lsSet('crm_cobro_consecutivo', n);
-  await dbGuardar('cuentas_cobro_consecutivo', n);
-}
-
-function cobroConfigurarConsecutivo(){
-  const actual = cobroProximoConsecutivo();
-  const entrada = prompt('Configura el numero de la PROXIMA cuenta de cobro a generar.\n\nUsa esto solo una vez para arrancar el consecutivo; despues de cada cuenta guardada aumentara automaticamente.', actual);
-  if(entrada===null) return;
-  const n = parseInt(entrada);
-  if(!n || n<1){ toast('Numero invalido'); return; }
-  cobroGuardarConsecutivoSiguiente(n);
-  document.getElementById('cobro-consecutivo').value = n;
-  toast('Consecutivo configurado: la proxima cuenta sera la No. '+n);
+async function cobroAvanzarConsecutivo(beneficiarioId, valorUsado){
+  const b = cobroGetBeneficiario(beneficiarioId);
+  if(!b) return;
+  b.consecutivoSiguiente = valorUsado+1;
+  await cobroGuardarBeneficiarios();
 }
 
 function cobroNuevo(){
@@ -2096,9 +2153,10 @@ function cobroNuevo(){
 }
 
 function cobroLeerFormulario(){
-  const b = cobroBeneficiario||{};
+  const b = cobroBeneficiarioActivo()||{};
   return {
-    consecutivo: Number(document.getElementById('cobro-consecutivo').value)||cobroProximoConsecutivo(),
+    beneficiarioId: b.id||null,
+    consecutivo: Number(document.getElementById('cobro-consecutivo').value)||b.consecutivoSiguiente||1,
     ciudad: document.getElementById('cobro-ciudad').value.trim()||'Santiago de Cali',
     fecha: document.getElementById('cobro-fecha').value || hoyStr,
     empresa: document.getElementById('cobro-empresa').value.trim(),
@@ -2112,6 +2170,10 @@ function cobroLeerFormulario(){
 }
 
 function cobroCargarEnFormulario(r){
+  if(r.beneficiarioId && cobroGetBeneficiario(r.beneficiarioId)){
+    cobroBeneficiarioActivoId = r.beneficiarioId;
+    renderBeneficiarioSelect();
+  }
   document.getElementById('cobro-consecutivo').value = r.consecutivo;
   document.getElementById('cobro-ciudad').value = r.ciudad;
   document.getElementById('cobro-fecha').value = r.fecha;
@@ -2123,7 +2185,7 @@ function cobroCargarEnFormulario(r){
 }
 
 async function cobroGuardar(){
-  if(!cobroBeneficiario || !cobroBeneficiario.nombre){ toast('Primero configura el beneficiario / firma'); abrirModalBeneficiario(); return; }
+  if(!cobroBeneficiarioActivo()){ toast('Primero crea/elige un beneficiario'); abrirModalBeneficiario(null); return; }
   const datos = cobroLeerFormulario();
   if(!datos.empresa || !datos.valor){ toast('Completa al menos la empresa y el valor'); return; }
   datos.guardadoEn = new Date().toISOString();
@@ -2138,9 +2200,9 @@ async function cobroGuardar(){
   }
   lsSet('crm_cuentas_cobro', cuentasCobro);
   await dbGuardar('cuentas_cobro', cuentasCobro);
-  if(esNuevo){
-    // Avanza el consecutivo automaticamente para la siguiente cuenta
-    await cobroGuardarConsecutivoSiguiente(datos.consecutivo+1);
+  if(esNuevo && datos.beneficiarioId){
+    // Avanza el consecutivo automaticamente para la siguiente cuenta de ESTE beneficiario
+    await cobroAvanzarConsecutivo(datos.beneficiarioId, datos.consecutivo);
   }
   cobroEditandoId = null;
   document.getElementById('cobro-edit-banner').style.display='none';
@@ -2241,7 +2303,7 @@ function cobroConstruirHTMLImpresion(d){
 }
 
 function cobroImprimir(){
-  if(!cobroBeneficiario || !cobroBeneficiario.nombre){ toast('Primero configura el beneficiario / firma'); abrirModalBeneficiario(); return; }
+  if(!cobroBeneficiarioActivo()){ toast('Primero crea/elige un beneficiario'); abrirModalBeneficiario(null); return; }
   const d = cobroLeerFormulario();
   if(!d.empresa || !d.valor){ toast('Completa al menos la empresa y el valor antes de imprimir'); return; }
   cajaAbrirVentanaImpresion(cobroConstruirHTMLImpresion(d));
@@ -2270,15 +2332,19 @@ async function inicializar(){
     if(cfg.mensajes)   mensajes   = cfg.mensajes;
     if(cfg.cuadres_caja) cuadresCaja = cfg.cuadres_caja;
     if(cfg.cuentas_cobro) cuentasCobro = cfg.cuentas_cobro;
-    if(cfg.cuentas_cobro_consecutivo!=null) cobroConsecutivoSiguiente = cfg.cuentas_cobro_consecutivo;
-    if(cfg.cobro_beneficiario) cobroBeneficiario = cfg.cobro_beneficiario;
+    if(cfg.cobro_beneficiarios) cobroBeneficiarios = cfg.cobro_beneficiarios;
+    else if(cfg.cobro_beneficiario){
+      // Migracion desde la version anterior (un solo beneficiario global)
+      const consec = cfg.cuentas_cobro_consecutivo!=null ? cfg.cuentas_cobro_consecutivo : cobroSiguienteConsecutivoSugerido();
+      cobroBeneficiarios = [{ id:Date.now(), ...cfg.cobro_beneficiario, consecutivoSiguiente: consec }];
+    }
+    if(cobroBeneficiarios.length) cobroBeneficiarioActivoId = cobroBeneficiarios[0].id;
     // Cache offline
     lsSet('crm_clientes',clientes); lsSet('crm_servicios',servicios);
     lsSet('crm_ciudades',ciudades); lsSet('crm_vendedores',vendedores);
     lsSet('crm_mensajes',mensajes); lsSet('crm_cuadres_caja',cuadresCaja);
     lsSet('crm_cuentas_cobro',cuentasCobro);
-    if(cobroConsecutivoSiguiente!=null) lsSet('crm_cobro_consecutivo',cobroConsecutivoSiguiente);
-    if(cobroBeneficiario) lsSet('crm_cobro_beneficiario',cobroBeneficiario);
+    lsSet('crm_cobro_beneficiarios',cobroBeneficiarios);
     mostrarConexion('online');
   } else {
     // Fallback offline
@@ -2290,14 +2356,14 @@ async function inicializar(){
     const lsM=lsGet('crm_mensajes',null);  if(lsM) mensajes=lsM;
     const lsCaja=lsGet('crm_cuadres_caja',null); if(lsCaja) cuadresCaja=lsCaja;
     const lsCobro=lsGet('crm_cuentas_cobro',null); if(lsCobro) cuentasCobro=lsCobro;
-    const lsCobroConsec=lsGet('crm_cobro_consecutivo',null); if(lsCobroConsec!=null) cobroConsecutivoSiguiente=lsCobroConsec;
-    const lsBenef=lsGet('crm_cobro_beneficiario',null); if(lsBenef) cobroBeneficiario=lsBenef;
+    const lsBenefs=lsGet('crm_cobro_beneficiarios',null); if(lsBenefs) cobroBeneficiarios=lsBenefs;
+    if(cobroBeneficiarios.length) cobroBeneficiarioActivoId = cobroBeneficiarios[0].id;
     mostrarConexion(_sb ? 'error' : 'config');
   }
 
   poblarFiltros(); renderTags(); render(); renderHistorial(); actualizarUltimaCopia();
   renderCajaHistorial(); cajaNuevo();
-  renderCobroHistorial(); cobroNuevo(); renderBeneficiarioResumen();
+  renderCobroHistorial(); renderBeneficiarioSelect(); cobroNuevo();
 
   // Auto-refresh cada 20 segundos para ver cambios de otros usuarios
   if(SUPABASE_URL){
@@ -2311,8 +2377,7 @@ async function inicializar(){
         if(d.mensajes)mensajes=d.mensajes;
         if(d.cuadres_caja){cuadresCaja=d.cuadres_caja;renderCajaHistorial();}
         if(d.cuentas_cobro){cuentasCobro=d.cuentas_cobro;renderCobroHistorial();}
-        if(d.cuentas_cobro_consecutivo!=null){cobroConsecutivoSiguiente=d.cuentas_cobro_consecutivo;}
-        if(d.cobro_beneficiario){cobroBeneficiario=d.cobro_beneficiario;renderBeneficiarioResumen();}
+        if(d.cobro_beneficiarios){cobroBeneficiarios=d.cobro_beneficiarios;renderBeneficiarioSelect();}
         poblarFiltros();renderTags();render();
         mostrarConexion('online');
       }
