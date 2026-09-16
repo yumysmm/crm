@@ -660,6 +660,17 @@ tbody td{padding:8px 10px;vertical-align:middle}
         <div class="field"><label>Llave Bre-B (opcional)</label><input id="bf-breb" type="text" placeholder="Celular, correo o llave alfanumerica"></div>
       </div>
 
+      <div class="field" style="display:flex;align-items:center;gap:8px">
+        <input type="checkbox" id="bf-titular-otro" onchange="bfToggleTitularOtro()" style="width:auto">
+        <label style="margin:0;font-weight:400">La cuenta de pago es de otra persona (no del beneficiario)</label>
+      </div>
+      <div id="bf-titular-otro-campos" style="display:none;background:var(--surface2);border:1px solid var(--border);border-radius:var(--rs);padding:10px 12px;margin-bottom:11px">
+        <div class="field-row">
+          <div class="field" style="margin-bottom:0"><label>Nombre del titular de la cuenta</label><input id="bf-titular-nombre" type="text" placeholder="Nombre completo"></div>
+          <div class="field" style="margin-bottom:0"><label>Cédula del titular</label><input id="bf-titular-cedula" type="text" placeholder="1.130.648.670"></div>
+        </div>
+      </div>
+
       <div class="field">
         <label>Firma</label>
         <div style="display:flex;gap:16px;flex-wrap:wrap;align-items:flex-start;border:1px solid var(--border);border-radius:var(--rs);padding:12px;background:var(--surface2)">
@@ -1911,7 +1922,7 @@ function renderBeneficiarioResumen(){
   const el = document.getElementById('cobro-benef-resumen');
   if(!el) return;
   const b = cobroBeneficiarioActivo();
-  el.textContent = b ? `${b.nombre} — C.C. ${b.cedula||'—'} — ${b.banco||'—'} ${b.numCuenta||''}${b.breb?` — Bre-B: ${b.breb}`:''}`.trim() : 'Sin beneficiarios configurados — crea uno con "+ Nuevo beneficiario".';
+  el.textContent = b ? `${b.nombre} — C.C. ${b.cedula||'—'} — ${b.banco||'—'} ${b.numCuenta||''}${b.breb?` — Bre-B: ${b.breb}`:''}${b.titularOtro && b.titularNombre?` — Cuenta a nombre de: ${b.titularNombre}`:''}`.trim() : 'Sin beneficiarios configurados — crea uno con "+ Nuevo beneficiario".';
 }
 
 let bfFirmaData = null; // dataURL temporal mientras el modal esta abierto
@@ -2009,6 +2020,11 @@ function bfActualizarPreviewFirma(){
   }
 }
 
+function bfToggleTitularOtro(){
+  const on = document.getElementById('bf-titular-otro').checked;
+  document.getElementById('bf-titular-otro-campos').style.display = on ? 'block' : 'none';
+}
+
 function cobroSiguienteConsecutivoSugerido(){
   const max = cuentasCobro.reduce((m,c)=>Math.max(m, Number(c.consecutivo)||0), 0);
   return max+1;
@@ -2025,6 +2041,10 @@ function abrirModalBeneficiario(id){
   document.getElementById('bf-num-cuenta').value = b?.numCuenta||'';
   document.getElementById('bf-banco').value = b?.banco||'';
   document.getElementById('bf-breb').value = b?.breb||'';
+  document.getElementById('bf-titular-otro').checked = !!b?.titularOtro;
+  document.getElementById('bf-titular-nombre').value = b?.titularNombre||'';
+  document.getElementById('bf-titular-cedula').value = b?.titularCedula||'';
+  bfToggleTitularOtro();
   document.getElementById('bf-btn-eliminar').style.display = b ? 'block' : 'none';
   bfFirmaData = b?.firma||null;
   document.getElementById('modal-beneficiario').style.display='block';
@@ -2043,6 +2063,9 @@ async function guardarBeneficiario(){
     numCuenta: document.getElementById('bf-num-cuenta').value.trim(),
     banco: document.getElementById('bf-banco').value.trim(),
     breb: document.getElementById('bf-breb').value.trim(),
+    titularOtro: document.getElementById('bf-titular-otro').checked,
+    titularNombre: document.getElementById('bf-titular-nombre').value.trim(),
+    titularCedula: document.getElementById('bf-titular-cedula').value.trim(),
     firma: bfFirmaData || null,
     consecutivoSiguiente: consecutivo,
   };
@@ -2166,6 +2189,7 @@ function cobroLeerFormulario(){
     // Snapshot del beneficiario/firma en el momento de guardar (no cambia si luego se reconfigura)
     nombre: b.nombre||'', cedula: b.cedula||'', tipoCuenta: b.tipoCuenta||'Cuenta de Ahorros',
     numCuenta: b.numCuenta||'', banco: b.banco||'', breb: b.breb||'', firma: b.firma||null,
+    titularOtro: !!b.titularOtro, titularNombre: b.titularNombre||'', titularCedula: b.titularCedula||'',
   };
 }
 
@@ -2288,7 +2312,7 @@ function cobroConstruirHTMLImpresion(d){
     <div style="font-weight:700;margin:4px 0 18px">${valorLetras} pesos ($${valorFmt})</div>
     <div>Por concepto de:</div>
     <div style="margin:4px 0 18px">${d.concepto||''}</div>
-    <div style="margin-bottom:40px">Favor consignar en la ${d.tipoCuenta}, No. ${d.numCuenta||''} del Banco ${d.banco||''}, de la cual soy titular.${d.breb?`<br>También puede transferir a la llave Bre-B: <b>${d.breb}</b>`:''}</div>
+    <div style="margin-bottom:40px">Favor consignar en la ${d.tipoCuenta}, No. ${d.numCuenta||''} del Banco ${d.banco||''}${d.titularOtro && d.titularNombre ? `, de la cual es titular ${d.titularNombre.toUpperCase()}, C.C. ${d.titularCedula||''}` : ', de la cual soy titular'}.${d.breb?`<br>También puede transferir a la llave Bre-B: <b>${d.breb}</b>`:''}</div>
     <div class="firma">
       ${d.firma ? `<img src="${d.firma}" style="max-width:220px;max-height:95px;display:block;margin:0 auto">` : ''}
       <div class="linea"></div>
