@@ -257,6 +257,10 @@ tbody td{padding:8px 10px;vertical-align:middle}
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="8" y1="13" x2="16" y2="13"/><line x1="8" y1="17" x2="16" y2="17"/></svg>
             Cuenta de Cobro
           </button>
+          <button class="dropdown-item" onclick="togglePanel('recibo-panel');closeToolsMenu()" title="Recibo de caja">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 3h16v18l-3-2-2 2-2-2-2 2-2-2-2 2-3-2z"/><line x1="8" y1="8" x2="16" y2="8"/><line x1="8" y1="12" x2="16" y2="12"/></svg>
+            Recibo de Caja
+          </button>
           <button class="dropdown-item" onclick="abrirMensajes();closeToolsMenu()">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/></svg>
             Mensajes
@@ -510,6 +514,85 @@ tbody td{padding:8px 10px;vertical-align:middle}
     <div style="border-top:1px solid var(--border);padding-top:12px">
       <div style="font-size:12px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.4px;margin-bottom:8px">Cuentas de cobro guardadas</div>
       <div id="cobro-historial" style="font-size:12.5px;color:var(--muted)">Sin cuentas de cobro guardadas.</div>
+    </div>
+  </div>
+
+  <!-- Recibo de Caja Panel -->
+  <div class="panel" id="recibo-panel">
+    <h3>Recibo de Caja</h3>
+    <div id="recibo-edit-banner" style="display:none;align-items:center;justify-content:space-between;gap:10px;background:#fff8e6;border:1px solid #fcd34d;border-radius:var(--rs);padding:8px 12px;font-size:12px;color:#92400e;margin-bottom:12px">
+      <span id="recibo-edit-banner-txt">Editando recibo guardado</span>
+      <button class="btn btn-outline btn-sm" onclick="reciboCancelarEdicion()">Cancelar edición</button>
+    </div>
+
+    <div style="display:grid;grid-template-columns:150px 1fr 1fr;gap:12px;margin-bottom:12px">
+      <div class="field">
+        <label style="display:flex;align-items:center;justify-content:space-between">No. <button type="button" onclick="reciboConfigurarConsecutivo()" style="background:none;border:none;color:var(--notif);cursor:pointer;font-size:10px;text-decoration:underline;text-transform:none;font-weight:400;letter-spacing:0" title="Configurar el numero inicial (una sola vez)">configurar</button></label>
+        <input type="text" id="recibo-consecutivo" readonly style="background:var(--surface2);font-weight:700;cursor:default">
+      </div>
+      <div class="field"><label>Ciudad</label><input type="text" id="recibo-ciudad" value="Santiago de Cali"></div>
+      <div class="field"><label>Fecha</label><input type="date" id="recibo-fecha"></div>
+    </div>
+
+    <div style="display:grid;grid-template-columns:1.4fr 1fr;gap:12px;margin-bottom:12px">
+      <div class="field"><label>Recibido de</label><input type="text" id="recibo-recibido-de" placeholder="Nombre de quien paga"></div>
+      <div class="field"><label>Dirección</label><input type="text" id="recibo-direccion" placeholder="Opcional"></div>
+    </div>
+
+    <div style="display:grid;grid-template-columns:1fr;gap:12px;margin-bottom:6px">
+      <div class="field"><label>Valor</label><input type="number" id="recibo-valor" min="0" step="1" oninput="reciboActualizarLetras()" placeholder="230000"></div>
+    </div>
+    <div style="background:var(--surface2);border:1px solid var(--border);border-radius:var(--rs);padding:9px 12px;font-size:12.5px;margin-bottom:14px">
+      <span style="color:var(--muted)">Valor en letras:</span> <b id="recibo-valor-letras">—</b>
+    </div>
+
+    <div class="field" style="margin-bottom:14px">
+      <label>Por concepto de</label>
+      <textarea id="recibo-concepto" rows="2" style="width:100%;border:1px solid var(--border);border-radius:var(--rs);padding:8px 10px;font-family:inherit;font-size:12.5px;resize:vertical" placeholder="Pago de SOAT / abono a cuenta / etc."></textarea>
+    </div>
+
+    <div style="display:grid;grid-template-columns:1fr 1.4fr 1fr 100px;gap:12px;margin-bottom:16px;align-items:end">
+      <div class="field"><label>Cheque No.</label><input type="text" id="recibo-cheque"></div>
+      <div class="field"><label>Banco</label><input type="text" id="recibo-banco-pago"></div>
+      <div class="field"><label>Sucursal</label><input type="text" id="recibo-sucursal"></div>
+      <div class="field" style="display:flex;align-items:center;gap:6px;margin-bottom:11px">
+        <input type="checkbox" id="recibo-efectivo" style="width:auto">
+        <label style="margin:0;font-weight:400">Efectivo</label>
+      </div>
+    </div>
+
+    <div style="margin-bottom:16px">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px">
+        <span style="font-size:12px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.4px">Detalle contable (opcional)</span>
+        <button class="btn btn-outline" onclick="reciboAgregarFila()">+ Agregar fila</button>
+      </div>
+      <div class="tbl-outer">
+        <table>
+          <thead><tr><th style="width:90px">Código</th><th>Cuenta</th><th style="width:130px">Débito</th><th style="width:130px">Crédito</th><th style="width:40px"></th></tr></thead>
+          <tbody id="recibo-filas-body"></tbody>
+        </table>
+      </div>
+    </div>
+
+    <div style="display:grid;grid-template-columns:1.4fr 1fr;gap:12px;margin-bottom:16px">
+      <div class="field"><label>Firma y sello (firmante)</label><select id="recibo-firmante-select"></select></div>
+      <div class="field"><label>NIT</label><input type="text" id="recibo-nit" placeholder="901.623.629-4"></div>
+    </div>
+
+    <div style="display:flex;gap:8px;margin-bottom:16px">
+      <button class="btn btn-outline" onclick="reciboImprimir()" title="Imprimir o guardar como PDF">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:14px;height:14px"><polyline points="6 9 6 2 18 2 18 9"/><path d="M6 18H4a2 2 0 01-2-2v-5a2 2 0 012-2h16a2 2 0 012 2v5a2 2 0 01-2 2h-2"/><rect x="6" y="14" width="12" height="8"/></svg>
+        Imprimir / PDF
+      </button>
+      <div style="margin-left:auto;display:flex;gap:8px">
+        <button class="btn btn-outline" onclick="reciboNuevo()">Nuevo recibo</button>
+        <button class="btn btn-dark" id="recibo-btn-guardar" onclick="reciboGuardar()">Guardar recibo</button>
+      </div>
+    </div>
+
+    <div style="border-top:1px solid var(--border);padding-top:12px">
+      <div style="font-size:12px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.4px;margin-bottom:8px">Recibos guardados</div>
+      <div id="recibo-historial" style="font-size:12.5px;color:var(--muted)">Sin recibos guardados.</div>
     </div>
   </div>
 
@@ -1126,7 +1209,7 @@ function getVisible(){
 }
 
 // ── Render tabla ──────────────────────────────────────────────────────────────
-function render(){
+function render(mantenerPagina){
   const stats={ACTIVO:0,PROXIMO:0,VENCIDO:0};
   let notifCnt=0;
   clientes.forEach(c=>{stats[calcEstado(c.fecha).est]++;if(c.notifFecha===hoyStr)notifCnt++;});
@@ -1138,7 +1221,7 @@ function render(){
   document.getElementById('s-notif').textContent=notifCnt;
   document.getElementById('s-total-val').textContent='$'+totalVal.toLocaleString('es-CO');
 
-  paginaActual=1; // reset to page 1 when filters change
+  if(!mantenerPagina) paginaActual=1; // reset a pagina 1 solo cuando cambia un filtro/busqueda, no en el auto-refresh
   const visible=getVisible();
   renderTabla(visible);
 }
@@ -1260,11 +1343,12 @@ function guardarCliente(){
 function togglePanel(id){
   const p = document.getElementById(id);
   p.classList.toggle('open');
-  if(id==='caja-panel' || id==='cobro-panel'){
+  if(id==='caja-panel' || id==='cobro-panel' || id==='recibo-panel'){
     const cv = document.getElementById('clientes-view');
     const cajaOpen = document.getElementById('caja-panel').classList.contains('open');
     const cobroOpen = document.getElementById('cobro-panel').classList.contains('open');
-    cv.style.display = (cajaOpen||cobroOpen) ? 'none' : '';
+    const reciboOpen = document.getElementById('recibo-panel').classList.contains('open');
+    cv.style.display = (cajaOpen||cobroOpen||reciboOpen) ? 'none' : '';
   }
 }
 function toggleToolsMenu(e){ e.stopPropagation(); document.getElementById('tools-menu').classList.toggle('open'); }
@@ -2339,6 +2423,287 @@ function cobroImprimirRegistro(id){
   cajaAbrirVentanaImpresion(cobroConstruirHTMLImpresion(r));
 }
 
+// ── Recibo de Caja (modulo nuevo e independiente) ──────────────────────────────
+let recibosCaja = [];
+let reciboEditandoId = null;
+let reciboFilaId = 1;
+let reciboConsecutivoSiguiente = null; // se carga desde crm_config; null = aun no configurado
+
+function reciboProximoConsecutivo(){
+  if(reciboConsecutivoSiguiente!=null) return reciboConsecutivoSiguiente;
+  const max = recibosCaja.reduce((m,r)=>Math.max(m, Number(r.consecutivo)||0), 0);
+  return max+1;
+}
+
+async function reciboGuardarConsecutivoSiguiente(n){
+  reciboConsecutivoSiguiente = n;
+  lsSet('crm_recibo_consecutivo', n);
+  await dbGuardar('recibos_caja_consecutivo', n);
+}
+
+function reciboConfigurarConsecutivo(){
+  const actual = reciboProximoConsecutivo();
+  const entrada = prompt('Configura el numero del PROXIMO recibo de caja a generar.\n\nUsa esto solo una vez para arrancar el consecutivo; despues de cada recibo guardado aumentara automaticamente.', actual);
+  if(entrada===null) return;
+  const n = parseInt(entrada);
+  if(!n || n<1){ toast('Numero invalido'); return; }
+  reciboGuardarConsecutivoSiguiente(n);
+  document.getElementById('recibo-consecutivo').value = n;
+  toast('Consecutivo configurado: el proximo recibo sera el No. '+n);
+}
+
+function renderReciboFirmanteSelect(){
+  const sel = document.getElementById('recibo-firmante-select');
+  if(!sel) return;
+  if(!cobroBeneficiarios.length){
+    sel.innerHTML = `<option value="">Sin firmantes — crea uno en Cuenta de Cobro</option>`;
+  } else {
+    sel.innerHTML = cobroBeneficiarios.map(b=>`<option value="${b.id}">${b.nombre}</option>`).join('');
+  }
+}
+
+function reciboAgregarFila(codigo, cuenta, debito, credito){
+  const tbody = document.getElementById('recibo-filas-body');
+  const id = 'rf'+(reciboFilaId++);
+  const tr = document.createElement('tr');
+  tr.id = id;
+  tr.innerHTML = `
+    <td><input type="text" value="${codigo||''}" style="width:100%;border:1px solid var(--border);border-radius:4px;height:28px;padding:0 6px;font-family:inherit;font-size:12.5px"></td>
+    <td><input type="text" value="${cuenta||''}" style="width:100%;border:1px solid var(--border);border-radius:4px;height:28px;padding:0 6px;font-family:inherit;font-size:12.5px"></td>
+    <td><input type="number" value="${debito||0}" style="width:100%;border:1px solid var(--border);border-radius:4px;height:28px;padding:0 6px;font-family:inherit;font-size:12.5px"></td>
+    <td><input type="number" value="${credito||0}" style="width:100%;border:1px solid var(--border);border-radius:4px;height:28px;padding:0 6px;font-family:inherit;font-size:12.5px"></td>
+    <td><button onclick="document.getElementById('${id}').remove()" style="background:none;border:none;cursor:pointer;color:var(--vencido);font-size:15px" title="Eliminar fila">×</button></td>`;
+  tbody.appendChild(tr);
+}
+
+function reciboLeerFilas(){
+  return [...document.querySelectorAll('#recibo-filas-body tr')].map(tr=>{
+    const inputs = tr.querySelectorAll('input');
+    return { codigo: inputs[0].value, cuenta: inputs[1].value, debito: Number(inputs[2].value)||0, credito: Number(inputs[3].value)||0 };
+  }).filter(f=>f.codigo||f.cuenta||f.debito||f.credito);
+}
+
+function reciboActualizarLetras(){
+  const valor = document.getElementById('recibo-valor').value;
+  document.getElementById('recibo-valor-letras').textContent = valor ? cobroValorEnLetras(valor) : '—';
+}
+
+function reciboNuevo(){
+  reciboEditandoId = null;
+  document.getElementById('recibo-edit-banner').style.display='none';
+  document.getElementById('recibo-btn-guardar').textContent='Guardar recibo';
+  document.getElementById('recibo-consecutivo').value = reciboProximoConsecutivo();
+  document.getElementById('recibo-ciudad').value = 'Santiago de Cali';
+  document.getElementById('recibo-fecha').value = hoyStr;
+  document.getElementById('recibo-recibido-de').value='';
+  document.getElementById('recibo-direccion').value='';
+  document.getElementById('recibo-valor').value='';
+  document.getElementById('recibo-concepto').value='';
+  document.getElementById('recibo-cheque').value='';
+  document.getElementById('recibo-banco-pago').value='';
+  document.getElementById('recibo-sucursal').value='';
+  document.getElementById('recibo-efectivo').checked=false;
+  document.getElementById('recibo-filas-body').innerHTML='';
+  document.getElementById('recibo-nit').value='';
+  renderReciboFirmanteSelect();
+  if(cobroBeneficiarios.length) document.getElementById('recibo-firmante-select').value = cobroBeneficiarios[0].id;
+  reciboActualizarLetras();
+}
+
+function reciboLeerFormulario(){
+  const firmanteId = document.getElementById('recibo-firmante-select').value;
+  const firmante = firmanteId ? cobroGetBeneficiario(Number(firmanteId)) : null;
+  return {
+    consecutivo: Number(document.getElementById('recibo-consecutivo').value)||reciboProximoConsecutivo(),
+    ciudad: document.getElementById('recibo-ciudad').value.trim()||'Santiago de Cali',
+    fecha: document.getElementById('recibo-fecha').value || hoyStr,
+    recibidoDe: document.getElementById('recibo-recibido-de').value.trim(),
+    direccion: document.getElementById('recibo-direccion').value.trim(),
+    valor: Number(document.getElementById('recibo-valor').value)||0,
+    concepto: document.getElementById('recibo-concepto').value.trim(),
+    cheque: document.getElementById('recibo-cheque').value.trim(),
+    bancoPago: document.getElementById('recibo-banco-pago').value.trim(),
+    sucursal: document.getElementById('recibo-sucursal').value.trim(),
+    efectivo: document.getElementById('recibo-efectivo').checked,
+    filas: reciboLeerFilas(),
+    nit: document.getElementById('recibo-nit').value.trim(),
+    // Snapshot del firmante (nombre, cedula, firma) al momento de guardar
+    firmanteNombre: firmante?.nombre||'', firmanteCedula: firmante?.cedula||'', firmanteFirma: firmante?.firma||null,
+  };
+}
+
+function reciboCargarEnFormulario(r){
+  document.getElementById('recibo-consecutivo').value = r.consecutivo;
+  document.getElementById('recibo-ciudad').value = r.ciudad;
+  document.getElementById('recibo-fecha').value = r.fecha;
+  document.getElementById('recibo-recibido-de').value = r.recibidoDe||'';
+  document.getElementById('recibo-direccion').value = r.direccion||'';
+  document.getElementById('recibo-valor').value = r.valor;
+  document.getElementById('recibo-concepto').value = r.concepto||'';
+  document.getElementById('recibo-cheque').value = r.cheque||'';
+  document.getElementById('recibo-banco-pago').value = r.bancoPago||'';
+  document.getElementById('recibo-sucursal').value = r.sucursal||'';
+  document.getElementById('recibo-efectivo').checked = !!r.efectivo;
+  document.getElementById('recibo-filas-body').innerHTML='';
+  (r.filas||[]).forEach(f=>reciboAgregarFila(f.codigo,f.cuenta,f.debito,f.credito));
+  document.getElementById('recibo-nit').value = r.nit||'';
+  renderReciboFirmanteSelect();
+  reciboActualizarLetras();
+}
+
+async function reciboGuardar(){
+  const datos = reciboLeerFormulario();
+  if(!datos.recibidoDe || !datos.valor){ toast('Completa al menos "Recibido de" y el valor'); return; }
+  datos.guardadoEn = new Date().toISOString();
+  const esNuevo = !reciboEditandoId;
+  if(reciboEditandoId){
+    const idx = recibosCaja.findIndex(x=>x.id===reciboEditandoId);
+    if(idx>-1){ recibosCaja[idx] = {...recibosCaja[idx], ...datos}; toast('Recibo actualizado ✔'); }
+    else { recibosCaja.unshift({id:Date.now(), ...datos}); toast('Recibo guardado ✔'); }
+  } else {
+    recibosCaja.unshift({id:Date.now(), ...datos});
+    toast('Recibo No. '+datos.consecutivo+' guardado ✔');
+  }
+  lsSet('crm_recibos_caja', recibosCaja);
+  await dbGuardar('recibos_caja', recibosCaja);
+  if(esNuevo) await reciboGuardarConsecutivoSiguiente(datos.consecutivo+1);
+  reciboEditandoId = null;
+  document.getElementById('recibo-edit-banner').style.display='none';
+  document.getElementById('recibo-btn-guardar').textContent='Guardar recibo';
+  renderReciboHistorial();
+  reciboNuevo();
+}
+
+function reciboEditarRegistro(id){
+  const r = recibosCaja.find(x=>x.id===id);
+  if(!r) return;
+  reciboEditandoId = id;
+  reciboCargarEnFormulario(r);
+  document.getElementById('recibo-edit-banner-txt').textContent = 'Editando recibo No. '+r.consecutivo+' — al guardar se actualizara este registro';
+  document.getElementById('recibo-edit-banner').style.display='flex';
+  document.getElementById('recibo-btn-guardar').textContent='Actualizar recibo';
+  toast('Editando recibo No. '+r.consecutivo);
+}
+
+function reciboCancelarEdicion(){ reciboNuevo(); toast('Edicion cancelada'); }
+
+function reciboVerRegistro(id){
+  const r = recibosCaja.find(x=>x.id===id);
+  if(!r) return;
+  reciboEditandoId = null;
+  document.getElementById('recibo-edit-banner').style.display='none';
+  document.getElementById('recibo-btn-guardar').textContent='Guardar recibo';
+  reciboCargarEnFormulario(r);
+  toast('Recibo No. '+r.consecutivo+' cargado');
+}
+
+function reciboEliminarRegistro(id){
+  if(!confirm('¿Eliminar este recibo de caja? Esta accion no se puede deshacer.')) return;
+  recibosCaja = recibosCaja.filter(x=>x.id!==id);
+  lsSet('crm_recibos_caja', recibosCaja);
+  dbGuardar('recibos_caja', recibosCaja);
+  if(reciboEditandoId===id) reciboCancelarEdicion();
+  renderReciboHistorial();
+}
+
+function renderReciboHistorial(){
+  const el = document.getElementById('recibo-historial');
+  if(!recibosCaja.length){ el.textContent='Sin recibos guardados.'; return; }
+  const ordenados = [...recibosCaja].sort((a,b)=> (b.consecutivo||0)-(a.consecutivo||0));
+  el.innerHTML = `<div style="display:flex;flex-direction:column;gap:6px;max-height:220px;overflow:auto">` +
+    ordenados.map(r=>`
+      <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;padding:7px 10px;background:var(--surface2);border-radius:6px">
+        <span><b style="color:var(--text)">No. ${r.consecutivo}</b> — ${r.recibidoDe||'—'} — ${r.fecha} — <b style="color:var(--activo)">$${Number(r.valor||0).toLocaleString('es-CO')}</b></span>
+        <span style="display:flex;gap:10px;flex-shrink:0">
+          <button onclick="reciboVerRegistro(${r.id})" style="background:none;border:none;cursor:pointer;color:var(--notif);text-decoration:underline;font-size:12px">Ver</button>
+          <button onclick="reciboEditarRegistro(${r.id})" style="background:none;border:none;cursor:pointer;color:var(--accent);text-decoration:underline;font-size:12px">Editar</button>
+          <button onclick="reciboImprimirRegistro(${r.id})" style="background:none;border:none;cursor:pointer;color:var(--text);text-decoration:underline;font-size:12px">Imprimir</button>
+          <button onclick="reciboEliminarRegistro(${r.id})" style="background:none;border:none;cursor:pointer;color:var(--vencido);text-decoration:underline;font-size:12px">Eliminar</button>
+        </span>
+      </div>`).join('') + `</div>`;
+}
+
+function reciboConstruirHTMLImpresion(d){
+  const valorFmt = Number(d.valor||0).toLocaleString('es-CO');
+  const valorLetras = ccCapitaliza(numeroALetras(d.valor));
+  const fechaFmt = (()=>{ try{ const[y,m,day]=d.fecha.split('-'); return {d:day,m:m,a:y}; }catch(e){ return {d:'',m:'',a:''}; } })();
+  const filas = (d.filas||[]);
+  const filasHtml = filas.length ? filas.map(f=>`<tr><td>${f.codigo||''}</td><td>${f.cuenta||''}</td><td style="text-align:right">${f.debito?cajaFmt(f.debito):''}</td><td style="text-align:right">${f.credito?cajaFmt(f.credito):''}</td></tr>`).join('')
+    : `<tr><td colspan="4">&nbsp;</td></tr><tr><td colspan="4">&nbsp;</td></tr><tr><td colspan="4">&nbsp;</td></tr>`;
+  return `<!DOCTYPE html><html><head><meta charset="utf-8"><title>Recibo de Caja No. ${d.consecutivo}</title>
+  <style>
+    body{font-family:Arial,Helvetica,sans-serif;color:#7a1f1f;padding:24px;font-size:12.5px}
+    .hoja{border:2px solid #b23c3c;border-radius:6px;overflow:hidden}
+    .top{display:flex;justify-content:flex-end;padding:10px 14px;border-bottom:2px solid #b23c3c}
+    .titulo{background:#b23c3c;color:#fff;font-weight:700;font-size:17px;padding:6px 22px;border-radius:4px}
+    .marca{font-size:11px;color:#b23c3c;margin-top:4px}
+    .row{display:flex;border-bottom:1px solid #d99}
+    .row > div{padding:7px 12px;border-right:1px solid #d99}
+    .row > div:last-child{border-right:none}
+    .lbl{font-size:10px;color:#a55}
+    .val{font-weight:600;color:#333;margin-top:2px}
+    table{width:100%;border-collapse:collapse}
+    th,td{border:1px solid #d99;padding:5px 8px;font-size:11.5px;color:#333}
+    th{background:#f3d9d9;color:#7a1f1f}
+    .firma-box{border:1px solid #d99;padding:10px;min-height:110px;position:relative}
+    .firma-box img{max-width:160px;max-height:70px;display:block;margin:0 auto 4px}
+    @media print{ body{padding:8px} }
+  </style></head><body>
+  <div class="hoja">
+    <div class="top" style="justify-content:space-between;align-items:center">
+      <div class="marca">forma <b>RECIBO DE CAJA</b></div>
+      <div><div class="titulo">Recibo de Caja</div><div style="text-align:right;margin-top:4px;font-weight:700">No. ${d.consecutivo}</div></div>
+    </div>
+    <div class="row">
+      <div style="flex:2"><div class="lbl">Ciudad</div><div class="val">${d.ciudad||''}</div></div>
+      <div><div class="lbl">Fecha</div><div class="val">${fechaFmt.d}/${fechaFmt.m}/${fechaFmt.a}</div></div>
+    </div>
+    <div class="row"><div style="flex:1"><div class="lbl">Recibido de</div><div class="val">${d.recibidoDe||''}</div></div></div>
+    <div class="row"><div style="flex:1"><div class="lbl">Dirección</div><div class="val">${d.direccion||'&nbsp;'}</div></div></div>
+    <div class="row">
+      <div style="flex:3"><div class="lbl">La suma de (en letras)</div><div class="val">${valorLetras} pesos</div></div>
+      <div><div class="lbl">Valor</div><div class="val">$${valorFmt}</div></div>
+    </div>
+    <div class="row"><div style="flex:1"><div class="lbl">Por concepto de</div><div class="val">${d.concepto||'&nbsp;'}</div></div></div>
+    <div class="row">
+      <div style="flex:1"><div class="lbl">Cheque No.</div><div class="val">${d.cheque||'&nbsp;'}</div></div>
+      <div style="flex:1"><div class="lbl">Banco</div><div class="val">${d.bancoPago||'&nbsp;'}</div></div>
+      <div style="flex:1"><div class="lbl">Sucursal</div><div class="val">${d.sucursal||'&nbsp;'}</div></div>
+      <div style="width:90px;text-align:center"><div class="lbl">Efectivo</div><div class="val">${d.efectivo?'✔':''}</div></div>
+    </div>
+    <div style="display:flex">
+      <div style="flex:1">
+        <table>
+          <thead><tr><th>Código</th><th>Cuenta</th><th>Débitos</th><th>Créditos</th></tr></thead>
+          <tbody>${filasHtml}</tbody>
+        </table>
+      </div>
+      <div style="width:220px" class="firma-box">
+        <div class="lbl" style="margin-bottom:6px">Firma y sello</div>
+        ${d.firmanteFirma?`<img src="${d.firmanteFirma}">`:''}
+        <div style="text-align:center;font-weight:700;font-size:11.5px">${(d.firmanteNombre||'').toUpperCase()}</div>
+        <div style="position:absolute;bottom:6px;left:10px;right:10px;display:flex;gap:6px;font-size:10px">
+          <span>C.C. ${d.firmanteCedula||''}</span>
+          <span style="margin-left:auto">NIT. ${d.nit||''}</span>
+        </div>
+      </div>
+    </div>
+  </div>
+  </body></html>`;
+}
+
+function reciboImprimir(){
+  const d = reciboLeerFormulario();
+  if(!d.recibidoDe || !d.valor){ toast('Completa al menos "Recibido de" y el valor antes de imprimir'); return; }
+  cajaAbrirVentanaImpresion(reciboConstruirHTMLImpresion(d));
+}
+
+function reciboImprimirRegistro(id){
+  const r = recibosCaja.find(x=>x.id===id);
+  if(!r) return;
+  cajaAbrirVentanaImpresion(reciboConstruirHTMLImpresion(r));
+}
+
 // ── Inicializacion desde Supabase ──────────────────────────────────────────────
 async function inicializar(){
   _initSB(); // init Supabase after SDK is loaded
@@ -2363,12 +2728,16 @@ async function inicializar(){
       cobroBeneficiarios = [{ id:Date.now(), ...cfg.cobro_beneficiario, consecutivoSiguiente: consec }];
     }
     if(cobroBeneficiarios.length) cobroBeneficiarioActivoId = cobroBeneficiarios[0].id;
+    if(cfg.recibos_caja) recibosCaja = cfg.recibos_caja;
+    if(cfg.recibos_caja_consecutivo!=null) reciboConsecutivoSiguiente = cfg.recibos_caja_consecutivo;
     // Cache offline
     lsSet('crm_clientes',clientes); lsSet('crm_servicios',servicios);
     lsSet('crm_ciudades',ciudades); lsSet('crm_vendedores',vendedores);
     lsSet('crm_mensajes',mensajes); lsSet('crm_cuadres_caja',cuadresCaja);
     lsSet('crm_cuentas_cobro',cuentasCobro);
     lsSet('crm_cobro_beneficiarios',cobroBeneficiarios);
+    lsSet('crm_recibos_caja',recibosCaja);
+    if(reciboConsecutivoSiguiente!=null) lsSet('crm_recibo_consecutivo',reciboConsecutivoSiguiente);
     mostrarConexion('online');
   } else {
     // Fallback offline
@@ -2382,12 +2751,15 @@ async function inicializar(){
     const lsCobro=lsGet('crm_cuentas_cobro',null); if(lsCobro) cuentasCobro=lsCobro;
     const lsBenefs=lsGet('crm_cobro_beneficiarios',null); if(lsBenefs) cobroBeneficiarios=lsBenefs;
     if(cobroBeneficiarios.length) cobroBeneficiarioActivoId = cobroBeneficiarios[0].id;
+    const lsRecibos=lsGet('crm_recibos_caja',null); if(lsRecibos) recibosCaja=lsRecibos;
+    const lsReciboConsec=lsGet('crm_recibo_consecutivo',null); if(lsReciboConsec!=null) reciboConsecutivoSiguiente=lsReciboConsec;
     mostrarConexion(_sb ? 'error' : 'config');
   }
 
   poblarFiltros(); renderTags(); render(); renderHistorial(); actualizarUltimaCopia();
   renderCajaHistorial(); cajaNuevo();
   renderCobroHistorial(); renderBeneficiarioSelect(); cobroNuevo();
+  renderReciboHistorial(); reciboNuevo();
 
   // Auto-refresh cada 20 segundos para ver cambios de otros usuarios
   if(SUPABASE_URL){
@@ -2402,7 +2774,9 @@ async function inicializar(){
         if(d.cuadres_caja){cuadresCaja=d.cuadres_caja;renderCajaHistorial();}
         if(d.cuentas_cobro){cuentasCobro=d.cuentas_cobro;renderCobroHistorial();}
         if(d.cobro_beneficiarios){cobroBeneficiarios=d.cobro_beneficiarios;renderBeneficiarioSelect();}
-        poblarFiltros();renderTags();render();
+        if(d.recibos_caja){recibosCaja=d.recibos_caja;renderReciboHistorial();}
+        if(d.recibos_caja_consecutivo!=null){reciboConsecutivoSiguiente=d.recibos_caja_consecutivo;}
+        poblarFiltros();renderTags();render(true);
         mostrarConexion('online');
       }
     },20000);
