@@ -2739,10 +2739,6 @@ function reciboConstruirHTMLImpresion(d){
         <div class="lbl" style="margin-bottom:3px">Firma y sello</div>
         ${d.firmanteFirma?`<img src="${d.firmanteFirma}">`:''}
         <div style="text-align:center;font-weight:700;font-size:10.5px">${(d.firmanteNombre||'').toUpperCase()}</div>
-        <div style="position:absolute;bottom:4px;left:8px;right:8px;display:flex;gap:6px;font-size:9px">
-          <span>C.C. ${d.firmanteCedula||''}</span>
-          <span style="margin-left:auto">NIT. ${d.negocioNit||''}</span>
-        </div>
       </div>
     </div>
   </div>
