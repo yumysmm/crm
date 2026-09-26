@@ -519,7 +519,11 @@ tbody td{padding:8px 10px;vertical-align:middle}
 
   <!-- Recibo de Caja Panel -->
   <div class="panel" id="recibo-panel">
-    <h3>Recibo de Caja</h3>
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px">
+      <h3 style="margin:0">Recibo de Caja</h3>
+      <button class="btn btn-outline btn-sm" onclick="abrirModalNegocioRecibo()">Configurar negocio</button>
+    </div>
+    <div id="recibo-negocio-resumen" style="font-size:11px;color:var(--muted);margin:-6px 0 14px 2px">Sin datos del negocio configurados.</div>
     <div id="recibo-edit-banner" style="display:none;align-items:center;justify-content:space-between;gap:10px;background:#fff8e6;border:1px solid #fcd34d;border-radius:var(--rs);padding:8px 12px;font-size:12px;color:#92400e;margin-bottom:12px">
       <span id="recibo-edit-banner-txt">Editando recibo guardado</span>
       <button class="btn btn-outline btn-sm" onclick="reciboCancelarEdicion()">Cancelar edición</button>
@@ -574,9 +578,8 @@ tbody td{padding:8px 10px;vertical-align:middle}
       </div>
     </div>
 
-    <div style="display:grid;grid-template-columns:1.4fr 1fr;gap:12px;margin-bottom:16px">
+    <div style="display:grid;grid-template-columns:1fr;gap:12px;margin-bottom:16px">
       <div class="field"><label>Firma y sello (firmante)</label><select id="recibo-firmante-select"></select></div>
-      <div class="field"><label>NIT</label><input type="text" id="recibo-nit" placeholder="901.623.629-4"></div>
     </div>
 
     <div style="display:flex;gap:8px;margin-bottom:16px">
@@ -789,6 +792,23 @@ tbody td{padding:8px 10px;vertical-align:middle}
 </div>
 
 <!-- Modal configuracion general -->
+<!-- Modal negocio (recibo de caja) -->
+<div id="modal-negocio-recibo" style="display:none">
+  <div class="overlay" onclick="co('modal-negocio-recibo',event)">
+    <div class="modal" onclick="event.stopPropagation()">
+      <h2>Configurar negocio</h2>
+      <p style="font-size:11.5px;color:var(--muted);margin-bottom:14px">Esta información aparece en el encabezado de cada Recibo de Caja impreso. Configúrala una sola vez.</p>
+      <div class="field"><label>Nombre del negocio</label><input id="ng-nombre" type="text" placeholder="FASSEG Agencia de Seguros"></div>
+      <div class="field"><label>NIT</label><input id="ng-nit" type="text" placeholder="901.623.629-4"></div>
+      <div class="field"><label>Dirección</label><input id="ng-direccion" type="text" placeholder="Calle 00 # 00-00, Santiago de Cali"></div>
+      <div class="field"><label>Celular</label><input id="ng-celular" type="text" placeholder="3001234567"></div>
+      <div class="modal-foot">
+        <button class="btn-cancel" onclick="document.getElementById('modal-negocio-recibo').style.display='none'">Cancelar</button>
+        <button class="btn-save" onclick="guardarNegocioRecibo()">Guardar</button>
+      </div>
+    </div>
+  </div>
+</div>
 <div id="modal-config" style="display:none">
   <div class="overlay" onclick="co('modal-config',event)">
     <div class="modal" style="width:min(600px,100%)" onclick="event.stopPropagation()">
@@ -2428,6 +2448,39 @@ let recibosCaja = [];
 let reciboEditandoId = null;
 let reciboFilaId = 1;
 let reciboConsecutivoSiguiente = null; // se carga desde crm_config; null = aun no configurado
+let reciboNegocio = null; // {nombre,nit,direccion,celular} - fijo, se configura una sola vez
+
+function renderNegocioResumen(){
+  const el = document.getElementById('recibo-negocio-resumen');
+  if(!el) return;
+  const n = reciboNegocio;
+  el.textContent = (n && n.nombre) ? `${n.nombre}${n.nit?` — NIT ${n.nit}`:''}${n.direccion?` — ${n.direccion}`:''}${n.celular?` — Cel. ${n.celular}`:''}` : 'Sin datos del negocio configurados — haz clic en "Configurar negocio".';
+}
+
+function abrirModalNegocioRecibo(){
+  const n = reciboNegocio || {};
+  document.getElementById('ng-nombre').value = n.nombre||'';
+  document.getElementById('ng-nit').value = n.nit||'';
+  document.getElementById('ng-direccion').value = n.direccion||'';
+  document.getElementById('ng-celular').value = n.celular||'';
+  document.getElementById('modal-negocio-recibo').style.display='block';
+}
+
+async function guardarNegocioRecibo(){
+  const nombre = document.getElementById('ng-nombre').value.trim();
+  if(!nombre){ alert('Ingresa al menos el nombre del negocio.'); return; }
+  reciboNegocio = {
+    nombre,
+    nit: document.getElementById('ng-nit').value.trim(),
+    direccion: document.getElementById('ng-direccion').value.trim(),
+    celular: document.getElementById('ng-celular').value.trim(),
+  };
+  lsSet('crm_recibo_negocio', reciboNegocio);
+  await dbGuardar('recibo_negocio', reciboNegocio);
+  renderNegocioResumen();
+  document.getElementById('modal-negocio-recibo').style.display='none';
+  toast('Datos del negocio guardados ✔');
+}
 
 function reciboProximoConsecutivo(){
   if(reciboConsecutivoSiguiente!=null) return reciboConsecutivoSiguiente;
@@ -2504,7 +2557,6 @@ function reciboNuevo(){
   document.getElementById('recibo-sucursal').value='';
   document.getElementById('recibo-efectivo').checked=false;
   document.getElementById('recibo-filas-body').innerHTML='';
-  document.getElementById('recibo-nit').value='';
   renderReciboFirmanteSelect();
   if(cobroBeneficiarios.length) document.getElementById('recibo-firmante-select').value = cobroBeneficiarios[0].id;
   reciboActualizarLetras();
@@ -2513,6 +2565,7 @@ function reciboNuevo(){
 function reciboLeerFormulario(){
   const firmanteId = document.getElementById('recibo-firmante-select').value;
   const firmante = firmanteId ? cobroGetBeneficiario(Number(firmanteId)) : null;
+  const n = reciboNegocio||{};
   return {
     consecutivo: Number(document.getElementById('recibo-consecutivo').value)||reciboProximoConsecutivo(),
     ciudad: document.getElementById('recibo-ciudad').value.trim()||'Santiago de Cali',
@@ -2526,9 +2579,10 @@ function reciboLeerFormulario(){
     sucursal: document.getElementById('recibo-sucursal').value.trim(),
     efectivo: document.getElementById('recibo-efectivo').checked,
     filas: reciboLeerFilas(),
-    nit: document.getElementById('recibo-nit').value.trim(),
     // Snapshot del firmante (nombre, cedula, firma) al momento de guardar
     firmanteNombre: firmante?.nombre||'', firmanteCedula: firmante?.cedula||'', firmanteFirma: firmante?.firma||null,
+    // Snapshot de los datos del negocio al momento de guardar
+    negocioNombre: n.nombre||'', negocioNit: n.nit||'', negocioDireccion: n.direccion||'', negocioCelular: n.celular||'',
   };
 }
 
@@ -2546,7 +2600,6 @@ function reciboCargarEnFormulario(r){
   document.getElementById('recibo-efectivo').checked = !!r.efectivo;
   document.getElementById('recibo-filas-body').innerHTML='';
   (r.filas||[]).forEach(f=>reciboAgregarFila(f.codigo,f.cuenta,f.debito,f.credito));
-  document.getElementById('recibo-nit').value = r.nit||'';
   renderReciboFirmanteSelect();
   reciboActualizarLetras();
 }
@@ -2629,30 +2682,34 @@ function reciboConstruirHTMLImpresion(d){
   const fechaFmt = (()=>{ try{ const[y,m,day]=d.fecha.split('-'); return {d:day,m:m,a:y}; }catch(e){ return {d:'',m:'',a:''}; } })();
   const filas = (d.filas||[]);
   const filasHtml = filas.length ? filas.map(f=>`<tr><td>${f.codigo||''}</td><td>${f.cuenta||''}</td><td style="text-align:right">${f.debito?cajaFmt(f.debito):''}</td><td style="text-align:right">${f.credito?cajaFmt(f.credito):''}</td></tr>`).join('')
-    : `<tr><td colspan="4">&nbsp;</td></tr><tr><td colspan="4">&nbsp;</td></tr><tr><td colspan="4">&nbsp;</td></tr>`;
+    : `<tr><td colspan="4">&nbsp;</td></tr><tr><td colspan="4">&nbsp;</td></tr>`;
+  const negocioLinea = [d.negocioNit?`NIT ${d.negocioNit}`:'', d.negocioDireccion||'', d.negocioCelular?`Cel. ${d.negocioCelular}`:''].filter(Boolean).join(' · ');
   return `<!DOCTYPE html><html><head><meta charset="utf-8"><title>Recibo de Caja No. ${d.consecutivo}</title>
   <style>
-    body{font-family:Arial,Helvetica,sans-serif;color:#7a1f1f;padding:24px;font-size:12.5px}
+    @page{ size: 8.5in 5.5in; margin: 0.25in; }
+    *{box-sizing:border-box}
+    body{font-family:Arial,Helvetica,sans-serif;color:#7a1f1f;padding:10px;font-size:10.5px;width:8in;margin:0 auto}
     .hoja{border:2px solid #b23c3c;border-radius:6px;overflow:hidden}
-    .top{display:flex;justify-content:flex-end;padding:10px 14px;border-bottom:2px solid #b23c3c}
-    .titulo{background:#b23c3c;color:#fff;font-weight:700;font-size:17px;padding:6px 22px;border-radius:4px}
-    .marca{font-size:11px;color:#b23c3c;margin-top:4px}
+    .top{display:flex;justify-content:space-between;align-items:center;padding:7px 12px;border-bottom:2px solid #b23c3c}
+    .titulo{background:#b23c3c;color:#fff;font-weight:700;font-size:14px;padding:4px 16px;border-radius:4px}
+    .marca{font-size:10px;color:#7a1f1f;line-height:1.4}
+    .marca b{font-size:12.5px}
     .row{display:flex;border-bottom:1px solid #d99}
-    .row > div{padding:7px 12px;border-right:1px solid #d99}
+    .row > div{padding:4px 10px;border-right:1px solid #d99}
     .row > div:last-child{border-right:none}
-    .lbl{font-size:10px;color:#a55}
-    .val{font-weight:600;color:#333;margin-top:2px}
+    .lbl{font-size:8.5px;color:#a55}
+    .val{font-weight:600;color:#333;margin-top:1px;font-size:11px}
     table{width:100%;border-collapse:collapse}
-    th,td{border:1px solid #d99;padding:5px 8px;font-size:11.5px;color:#333}
+    th,td{border:1px solid #d99;padding:3px 6px;font-size:9.5px;color:#333}
     th{background:#f3d9d9;color:#7a1f1f}
-    .firma-box{border:1px solid #d99;padding:10px;min-height:110px;position:relative}
-    .firma-box img{max-width:160px;max-height:70px;display:block;margin:0 auto 4px}
-    @media print{ body{padding:8px} }
+    .firma-box{border:1px solid #d99;padding:6px;min-height:70px;position:relative}
+    .firma-box img{max-width:120px;max-height:45px;display:block;margin:0 auto 2px}
+    @media print{ body{padding:0} }
   </style></head><body>
   <div class="hoja">
-    <div class="top" style="justify-content:space-between;align-items:center">
-      <div class="marca">forma <b>RECIBO DE CAJA</b></div>
-      <div><div class="titulo">Recibo de Caja</div><div style="text-align:right;margin-top:4px;font-weight:700">No. ${d.consecutivo}</div></div>
+    <div class="top">
+      <div class="marca"><b>${(d.negocioNombre||'FASSEG AGENCIA DE SEGUROS').toUpperCase()}</b><br>${negocioLinea}</div>
+      <div><div class="titulo">Recibo de Caja</div><div style="text-align:right;margin-top:3px;font-weight:700;font-size:11px">No. ${d.consecutivo}</div></div>
     </div>
     <div class="row">
       <div style="flex:2"><div class="lbl">Ciudad</div><div class="val">${d.ciudad||''}</div></div>
@@ -2669,7 +2726,7 @@ function reciboConstruirHTMLImpresion(d){
       <div style="flex:1"><div class="lbl">Cheque No.</div><div class="val">${d.cheque||'&nbsp;'}</div></div>
       <div style="flex:1"><div class="lbl">Banco</div><div class="val">${d.bancoPago||'&nbsp;'}</div></div>
       <div style="flex:1"><div class="lbl">Sucursal</div><div class="val">${d.sucursal||'&nbsp;'}</div></div>
-      <div style="width:90px;text-align:center"><div class="lbl">Efectivo</div><div class="val">${d.efectivo?'✔':''}</div></div>
+      <div style="width:70px;text-align:center"><div class="lbl">Efectivo</div><div class="val">${d.efectivo?'✔':''}</div></div>
     </div>
     <div style="display:flex">
       <div style="flex:1">
@@ -2678,13 +2735,13 @@ function reciboConstruirHTMLImpresion(d){
           <tbody>${filasHtml}</tbody>
         </table>
       </div>
-      <div style="width:220px" class="firma-box">
-        <div class="lbl" style="margin-bottom:6px">Firma y sello</div>
+      <div style="width:180px" class="firma-box">
+        <div class="lbl" style="margin-bottom:3px">Firma y sello</div>
         ${d.firmanteFirma?`<img src="${d.firmanteFirma}">`:''}
-        <div style="text-align:center;font-weight:700;font-size:11.5px">${(d.firmanteNombre||'').toUpperCase()}</div>
-        <div style="position:absolute;bottom:6px;left:10px;right:10px;display:flex;gap:6px;font-size:10px">
+        <div style="text-align:center;font-weight:700;font-size:10.5px">${(d.firmanteNombre||'').toUpperCase()}</div>
+        <div style="position:absolute;bottom:4px;left:8px;right:8px;display:flex;gap:6px;font-size:9px">
           <span>C.C. ${d.firmanteCedula||''}</span>
-          <span style="margin-left:auto">NIT. ${d.nit||''}</span>
+          <span style="margin-left:auto">NIT. ${d.negocioNit||''}</span>
         </div>
       </div>
     </div>
@@ -2730,6 +2787,7 @@ async function inicializar(){
     if(cobroBeneficiarios.length) cobroBeneficiarioActivoId = cobroBeneficiarios[0].id;
     if(cfg.recibos_caja) recibosCaja = cfg.recibos_caja;
     if(cfg.recibos_caja_consecutivo!=null) reciboConsecutivoSiguiente = cfg.recibos_caja_consecutivo;
+    if(cfg.recibo_negocio) reciboNegocio = cfg.recibo_negocio;
     // Cache offline
     lsSet('crm_clientes',clientes); lsSet('crm_servicios',servicios);
     lsSet('crm_ciudades',ciudades); lsSet('crm_vendedores',vendedores);
@@ -2738,6 +2796,7 @@ async function inicializar(){
     lsSet('crm_cobro_beneficiarios',cobroBeneficiarios);
     lsSet('crm_recibos_caja',recibosCaja);
     if(reciboConsecutivoSiguiente!=null) lsSet('crm_recibo_consecutivo',reciboConsecutivoSiguiente);
+    if(reciboNegocio) lsSet('crm_recibo_negocio',reciboNegocio);
     mostrarConexion('online');
   } else {
     // Fallback offline
@@ -2753,13 +2812,14 @@ async function inicializar(){
     if(cobroBeneficiarios.length) cobroBeneficiarioActivoId = cobroBeneficiarios[0].id;
     const lsRecibos=lsGet('crm_recibos_caja',null); if(lsRecibos) recibosCaja=lsRecibos;
     const lsReciboConsec=lsGet('crm_recibo_consecutivo',null); if(lsReciboConsec!=null) reciboConsecutivoSiguiente=lsReciboConsec;
+    const lsNegocio=lsGet('crm_recibo_negocio',null); if(lsNegocio) reciboNegocio=lsNegocio;
     mostrarConexion(_sb ? 'error' : 'config');
   }
 
   poblarFiltros(); renderTags(); render(); renderHistorial(); actualizarUltimaCopia();
   renderCajaHistorial(); cajaNuevo();
   renderCobroHistorial(); renderBeneficiarioSelect(); cobroNuevo();
-  renderReciboHistorial(); reciboNuevo();
+  renderReciboHistorial(); reciboNuevo(); renderNegocioResumen();
 
   // Auto-refresh cada 20 segundos para ver cambios de otros usuarios
   if(SUPABASE_URL){
@@ -2776,6 +2836,7 @@ async function inicializar(){
         if(d.cobro_beneficiarios){cobroBeneficiarios=d.cobro_beneficiarios;renderBeneficiarioSelect();}
         if(d.recibos_caja){recibosCaja=d.recibos_caja;renderReciboHistorial();}
         if(d.recibos_caja_consecutivo!=null){reciboConsecutivoSiguiente=d.recibos_caja_consecutivo;}
+        if(d.recibo_negocio){reciboNegocio=d.recibo_negocio;renderNegocioResumen();}
         poblarFiltros();renderTags();render(true);
         mostrarConexion('online');
       }
