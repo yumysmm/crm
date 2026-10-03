@@ -2912,21 +2912,49 @@ function guiaEliminarRegistro(id){
   renderGuiaHistorial();
 }
 
+let guiaExpandidoId = null;
+
+function guiaToggleExpandir(id){
+  guiaExpandidoId = (guiaExpandidoId===id) ? null : id;
+  renderGuiaHistorial();
+}
+
 function renderGuiaHistorial(){
   const el = document.getElementById('guia-historial');
   if(!guiaServicios.length){ el.textContent='Sin servicios documentados todavía.'; return; }
   const ordenados = [...guiaServicios].sort((a,b)=>(a.nombre||'').localeCompare(b.nombre||''));
-  el.innerHTML = `<div style="display:flex;flex-direction:column;gap:6px;max-height:260px;overflow:auto">` +
-    ordenados.map(g=>`
-      <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;padding:7px 10px;background:var(--surface2);border-radius:6px">
-        <span><b style="color:var(--text)">${g.nombre}</b> — ${(g.pasos||[]).length} paso(s)</span>
-        <span style="display:flex;gap:10px;flex-shrink:0">
-          <button onclick="guiaVerRegistro(${g.id})" style="background:none;border:none;cursor:pointer;color:var(--notif);text-decoration:underline;font-size:12px">Ver</button>
-          <button onclick="guiaEditarRegistro(${g.id})" style="background:none;border:none;cursor:pointer;color:var(--accent);text-decoration:underline;font-size:12px">Editar</button>
-          <button onclick="guiaImprimirRegistro(${g.id})" style="background:none;border:none;cursor:pointer;color:var(--text);text-decoration:underline;font-size:12px">Imprimir</button>
-          <button onclick="guiaEliminarRegistro(${g.id})" style="background:none;border:none;cursor:pointer;color:var(--vencido);text-decoration:underline;font-size:12px">Eliminar</button>
-        </span>
-      </div>`).join('') + `</div>`;
+  el.innerHTML = `<div style="display:flex;flex-direction:column;gap:6px;max-height:340px;overflow:auto">` +
+    ordenados.map(g=>{
+      const expandido = guiaExpandidoId===g.id;
+      const pasos = g.pasos||[];
+      return `
+      <div style="background:var(--surface2);border-radius:6px;overflow:hidden">
+        <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;padding:7px 10px">
+          <span ondblclick="guiaToggleExpandir(${g.id})" title="Doble clic para ver el proceso completo" style="cursor:pointer;user-select:none">
+            <b style="color:var(--text)">${g.nombre}</b> — ${pasos.length} paso(s)
+            <span style="color:var(--muted);font-size:11px"> (doble clic para ${expandido?'ocultar':'ver'})</span>
+          </span>
+          <span style="display:flex;gap:10px;flex-shrink:0">
+            <button onclick="guiaToggleExpandir(${g.id})" style="background:none;border:none;cursor:pointer;color:var(--notif);text-decoration:underline;font-size:12px">${expandido?'Ocultar':'Ver'}</button>
+            <button onclick="guiaEditarRegistro(${g.id})" style="background:none;border:none;cursor:pointer;color:var(--accent);text-decoration:underline;font-size:12px">Editar</button>
+            <button onclick="guiaImprimirRegistro(${g.id})" style="background:none;border:none;cursor:pointer;color:var(--text);text-decoration:underline;font-size:12px">Imprimir</button>
+            <button onclick="guiaEliminarRegistro(${g.id})" style="background:none;border:none;cursor:pointer;color:var(--vencido);text-decoration:underline;font-size:12px">Eliminar</button>
+          </span>
+        </div>
+        ${expandido ? `
+        <div style="padding:4px 14px 14px;border-top:1px solid var(--border)">
+          ${g.descripcion?`<p style="font-size:12px;color:var(--muted);margin:10px 0">${g.descripcion.replace(/\n/g,'<br>')}</p>`:''}
+          ${pasos.length?pasos.map((p,i)=>`
+            <div style="display:flex;gap:10px;margin-top:10px">
+              <div style="flex-shrink:0;width:22px;height:22px;border-radius:50%;background:var(--accent);color:#fff;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700">${i+1}</div>
+              <div>
+                <div style="font-weight:600;font-size:12.5px">${p.titulo||''}</div>
+                <div style="font-size:12px;color:var(--muted);margin-top:2px">${(p.descripcion||'').replace(/\n/g,'<br>')}</div>
+              </div>
+            </div>`).join('') : `<p style="font-size:12px;color:var(--muted)">Sin pasos documentados.</p>`}
+        </div>` : ''}
+      </div>`;
+    }).join('') + `</div>`;
 }
 
 function guiaConstruirHTMLImpresion(g){
