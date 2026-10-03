@@ -261,6 +261,10 @@ tbody td{padding:8px 10px;vertical-align:middle}
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 3h16v18l-3-2-2 2-2-2-2 2-2-2-2 2-3-2z"/><line x1="8" y1="8" x2="16" y2="8"/><line x1="8" y1="12" x2="16" y2="12"/></svg>
             Recibo de Caja
           </button>
+          <button class="dropdown-item" onclick="togglePanel('servicios-panel');closeToolsMenu()" title="Guia de servicios para el equipo">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 19.5A2.5 2.5 0 016.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 014 19.5v-15A2.5 2.5 0 016.5 2z"/><line x1="9" y1="7" x2="15" y2="7"/><line x1="9" y1="11" x2="15" y2="11"/></svg>
+            Guía de Servicios
+          </button>
           <button class="dropdown-item" onclick="abrirMensajes();closeToolsMenu()">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/></svg>
             Mensajes
@@ -596,6 +600,42 @@ tbody td{padding:8px 10px;vertical-align:middle}
     <div style="border-top:1px solid var(--border);padding-top:12px">
       <div style="font-size:12px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.4px;margin-bottom:8px">Recibos guardados</div>
       <div id="recibo-historial" style="font-size:12.5px;color:var(--muted)">Sin recibos guardados.</div>
+    </div>
+  </div>
+
+  <!-- Guia de Servicios Panel -->
+  <div class="panel" id="servicios-panel">
+    <h3>Guía de Servicios</h3>
+    <p style="font-size:11.5px;color:var(--muted);margin:-6px 0 14px">Documenta cada servicio que ofrecen, paso a paso, para que cualquier miembro nuevo del equipo pueda aprenderlo sin depender de que alguien se lo explique.</p>
+
+    <div id="guia-edit-banner" style="display:none;align-items:center;justify-content:space-between;gap:10px;background:#fff8e6;border:1px solid #fcd34d;border-radius:var(--rs);padding:8px 12px;font-size:12px;color:#92400e;margin-bottom:12px">
+      <span id="guia-edit-banner-txt">Editando servicio guardado</span>
+      <button class="btn btn-outline btn-sm" onclick="guiaCancelarEdicion()">Cancelar edición</button>
+    </div>
+
+    <div class="field"><label>Nombre del servicio</label><input type="text" id="guia-nombre" placeholder="Ej: Expedición de SOAT"></div>
+    <div class="field" style="margin-bottom:16px"><label>Descripción general</label><textarea id="guia-descripcion" rows="2" style="width:100%;border:1px solid var(--border);border-radius:var(--rs);padding:8px 10px;font-family:inherit;font-size:12.5px;resize:vertical" placeholder="Qué es este servicio y para qué sirve, en pocas líneas"></textarea></div>
+
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px">
+      <span style="font-size:12px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.4px">Pasos del instructivo</span>
+      <button class="btn btn-outline" onclick="guiaAgregarPaso()">+ Agregar paso</button>
+    </div>
+    <div id="guia-pasos-body" style="display:flex;flex-direction:column;gap:10px;margin-bottom:16px"></div>
+
+    <div style="display:flex;gap:8px;margin-bottom:16px">
+      <button class="btn btn-outline" onclick="guiaImprimir()" title="Imprimir o guardar como PDF">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:14px;height:14px"><polyline points="6 9 6 2 18 2 18 9"/><path d="M6 18H4a2 2 0 01-2-2v-5a2 2 0 012-2h16a2 2 0 012 2v5a2 2 0 01-2 2h-2"/><rect x="6" y="14" width="12" height="8"/></svg>
+        Imprimir / PDF
+      </button>
+      <div style="margin-left:auto;display:flex;gap:8px">
+        <button class="btn btn-outline" onclick="guiaNuevo()">Nuevo servicio</button>
+        <button class="btn btn-dark" id="guia-btn-guardar" onclick="guiaGuardar()">Guardar servicio</button>
+      </div>
+    </div>
+
+    <div style="border-top:1px solid var(--border);padding-top:12px">
+      <div style="font-size:12px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.4px;margin-bottom:8px">Servicios documentados</div>
+      <div id="guia-historial" style="font-size:12.5px;color:var(--muted)">Sin servicios documentados todavía.</div>
     </div>
   </div>
 
@@ -1363,12 +1403,13 @@ function guardarCliente(){
 function togglePanel(id){
   const p = document.getElementById(id);
   p.classList.toggle('open');
-  if(id==='caja-panel' || id==='cobro-panel' || id==='recibo-panel'){
+  if(id==='caja-panel' || id==='cobro-panel' || id==='recibo-panel' || id==='servicios-panel'){
     const cv = document.getElementById('clientes-view');
     const cajaOpen = document.getElementById('caja-panel').classList.contains('open');
     const cobroOpen = document.getElementById('cobro-panel').classList.contains('open');
     const reciboOpen = document.getElementById('recibo-panel').classList.contains('open');
-    cv.style.display = (cajaOpen||cobroOpen||reciboOpen) ? 'none' : '';
+    const serviciosOpen = document.getElementById('servicios-panel').classList.contains('open');
+    cv.style.display = (cajaOpen||cobroOpen||reciboOpen||serviciosOpen) ? 'none' : '';
   }
 }
 function toggleToolsMenu(e){ e.stopPropagation(); document.getElementById('tools-menu').classList.toggle('open'); }
@@ -2757,6 +2798,176 @@ function reciboImprimirRegistro(id){
   cajaAbrirVentanaImpresion(reciboConstruirHTMLImpresion(r));
 }
 
+// ── Guia de Servicios (modulo nuevo e independiente) ────────────────────────────
+let guiaServicios = [];
+let guiaEditandoId = null;
+let guiaPasoId = 1;
+
+function guiaAgregarPaso(titulo, descripcion){
+  const cont = document.getElementById('guia-pasos-body');
+  const id = 'gp'+(guiaPasoId++);
+  const n = cont.children.length+1;
+  const div = document.createElement('div');
+  div.id = id;
+  div.style.cssText = 'border:1px solid var(--border);border-radius:var(--rs);padding:10px 12px;background:var(--surface2)';
+  div.innerHTML = `
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px">
+      <span style="font-size:11px;font-weight:700;color:var(--accent)">PASO ${n}</span>
+      <button type="button" onclick="document.getElementById('${id}').remove();guiaRenumerarPasos()" style="background:none;border:none;cursor:pointer;color:var(--vencido);font-size:15px" title="Eliminar paso">×</button>
+    </div>
+    <input type="text" class="gp-titulo" value="${(titulo||'').replace(/"/g,'&quot;')}" placeholder="Título del paso (ej: Verificar datos del cliente)" style="width:100%;border:1px solid var(--border);border-radius:4px;height:30px;padding:0 8px;font-family:inherit;font-size:12.5px;font-weight:600;margin-bottom:6px">
+    <textarea class="gp-descripcion" rows="2" style="width:100%;border:1px solid var(--border);border-radius:4px;padding:6px 8px;font-family:inherit;font-size:12px;resize:vertical" placeholder="Explica en detalle qué hacer en este paso">${descripcion||''}</textarea>`;
+  cont.appendChild(div);
+}
+
+function guiaRenumerarPasos(){
+  document.querySelectorAll('#guia-pasos-body > div').forEach((div,i)=>{
+    div.querySelector('span').textContent = 'PASO '+(i+1);
+  });
+}
+
+function guiaLeerPasos(){
+  return [...document.querySelectorAll('#guia-pasos-body > div')].map(div=>({
+    titulo: div.querySelector('.gp-titulo').value.trim(),
+    descripcion: div.querySelector('.gp-descripcion').value.trim(),
+  })).filter(p=>p.titulo||p.descripcion);
+}
+
+function guiaNuevo(){
+  guiaEditandoId = null;
+  document.getElementById('guia-edit-banner').style.display='none';
+  document.getElementById('guia-btn-guardar').textContent='Guardar servicio';
+  document.getElementById('guia-nombre').value='';
+  document.getElementById('guia-descripcion').value='';
+  document.getElementById('guia-pasos-body').innerHTML='';
+  guiaAgregarPaso();
+}
+
+function guiaLeerFormulario(){
+  return {
+    nombre: document.getElementById('guia-nombre').value.trim(),
+    descripcion: document.getElementById('guia-descripcion').value.trim(),
+    pasos: guiaLeerPasos(),
+  };
+}
+
+function guiaCargarEnFormulario(g){
+  document.getElementById('guia-nombre').value = g.nombre||'';
+  document.getElementById('guia-descripcion').value = g.descripcion||'';
+  document.getElementById('guia-pasos-body').innerHTML='';
+  (g.pasos||[]).forEach(p=>guiaAgregarPaso(p.titulo,p.descripcion));
+  if(!(g.pasos||[]).length) guiaAgregarPaso();
+}
+
+async function guiaGuardar(){
+  const datos = guiaLeerFormulario();
+  if(!datos.nombre || !datos.pasos.length){ toast('Completa al menos el nombre del servicio y un paso'); return; }
+  datos.guardadoEn = new Date().toISOString();
+  if(guiaEditandoId){
+    const idx = guiaServicios.findIndex(x=>x.id===guiaEditandoId);
+    if(idx>-1){ guiaServicios[idx] = {...guiaServicios[idx], ...datos}; toast('Servicio actualizado ✔'); }
+    else { guiaServicios.unshift({id:Date.now(), ...datos}); toast('Servicio guardado ✔'); }
+  } else {
+    guiaServicios.unshift({id:Date.now(), ...datos});
+    toast('Servicio "'+datos.nombre+'" guardado ✔');
+  }
+  lsSet('crm_guia_servicios', guiaServicios);
+  await dbGuardar('guia_servicios', guiaServicios);
+  guiaEditandoId = null;
+  document.getElementById('guia-edit-banner').style.display='none';
+  document.getElementById('guia-btn-guardar').textContent='Guardar servicio';
+  renderGuiaHistorial();
+  guiaNuevo();
+}
+
+function guiaEditarRegistro(id){
+  const g = guiaServicios.find(x=>x.id===id);
+  if(!g) return;
+  guiaEditandoId = id;
+  guiaCargarEnFormulario(g);
+  document.getElementById('guia-edit-banner-txt').textContent = 'Editando "'+g.nombre+'" — al guardar se actualizara este registro';
+  document.getElementById('guia-edit-banner').style.display='flex';
+  document.getElementById('guia-btn-guardar').textContent='Actualizar servicio';
+  toast('Editando "'+g.nombre+'"');
+}
+
+function guiaCancelarEdicion(){ guiaNuevo(); toast('Edicion cancelada'); }
+
+function guiaVerRegistro(id){
+  const g = guiaServicios.find(x=>x.id===id);
+  if(!g) return;
+  guiaEditandoId = null;
+  document.getElementById('guia-edit-banner').style.display='none';
+  document.getElementById('guia-btn-guardar').textContent='Guardar servicio';
+  guiaCargarEnFormulario(g);
+  toast('"'+g.nombre+'" cargado');
+}
+
+function guiaEliminarRegistro(id){
+  if(!confirm('¿Eliminar este servicio documentado? Esta accion no se puede deshacer.')) return;
+  guiaServicios = guiaServicios.filter(x=>x.id!==id);
+  lsSet('crm_guia_servicios', guiaServicios);
+  dbGuardar('guia_servicios', guiaServicios);
+  if(guiaEditandoId===id) guiaCancelarEdicion();
+  renderGuiaHistorial();
+}
+
+function renderGuiaHistorial(){
+  const el = document.getElementById('guia-historial');
+  if(!guiaServicios.length){ el.textContent='Sin servicios documentados todavía.'; return; }
+  const ordenados = [...guiaServicios].sort((a,b)=>(a.nombre||'').localeCompare(b.nombre||''));
+  el.innerHTML = `<div style="display:flex;flex-direction:column;gap:6px;max-height:260px;overflow:auto">` +
+    ordenados.map(g=>`
+      <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;padding:7px 10px;background:var(--surface2);border-radius:6px">
+        <span><b style="color:var(--text)">${g.nombre}</b> — ${(g.pasos||[]).length} paso(s)</span>
+        <span style="display:flex;gap:10px;flex-shrink:0">
+          <button onclick="guiaVerRegistro(${g.id})" style="background:none;border:none;cursor:pointer;color:var(--notif);text-decoration:underline;font-size:12px">Ver</button>
+          <button onclick="guiaEditarRegistro(${g.id})" style="background:none;border:none;cursor:pointer;color:var(--accent);text-decoration:underline;font-size:12px">Editar</button>
+          <button onclick="guiaImprimirRegistro(${g.id})" style="background:none;border:none;cursor:pointer;color:var(--text);text-decoration:underline;font-size:12px">Imprimir</button>
+          <button onclick="guiaEliminarRegistro(${g.id})" style="background:none;border:none;cursor:pointer;color:var(--vencido);text-decoration:underline;font-size:12px">Eliminar</button>
+        </span>
+      </div>`).join('') + `</div>`;
+}
+
+function guiaConstruirHTMLImpresion(g){
+  const pasos = (g.pasos||[]).filter(p=>p.titulo||p.descripcion);
+  const pasosHtml = pasos.map((p,i)=>`
+    <div class="paso">
+      <div class="paso-num">${i+1}</div>
+      <div class="paso-cont">
+        <div class="paso-titulo">${p.titulo||''}</div>
+        <div class="paso-desc">${(p.descripcion||'').replace(/\n/g,'<br>')}</div>
+      </div>
+    </div>`).join('');
+  return `<!DOCTYPE html><html><head><meta charset="utf-8"><title>Guía de servicio: ${g.nombre}</title>
+  <style>
+    body{font-family:Arial,Helvetica,sans-serif;color:#1c2530;padding:40px 50px;font-size:13.5px;line-height:1.6}
+    h1{font-size:20px;margin:0 0 6px}
+    .desc{color:#555;margin-bottom:28px;max-width:640px}
+    .paso{display:flex;gap:14px;margin-bottom:20px;max-width:640px}
+    .paso-num{flex-shrink:0;width:30px;height:30px;border-radius:50%;background:#1e4d8b;color:#fff;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:13px}
+    .paso-titulo{font-weight:700;margin-bottom:3px}
+    .paso-desc{color:#333}
+    @media print{ body{padding:20px 30px} }
+  </style></head><body>
+    <h1>${g.nombre||''}</h1>
+    <div class="desc">${(g.descripcion||'').replace(/\n/g,'<br>')}</div>
+    ${pasosHtml}
+  </body></html>`;
+}
+
+function guiaImprimir(){
+  const d = guiaLeerFormulario();
+  if(!d.nombre || !d.pasos.length){ toast('Completa al menos el nombre y un paso antes de imprimir'); return; }
+  cajaAbrirVentanaImpresion(guiaConstruirHTMLImpresion(d));
+}
+
+function guiaImprimirRegistro(id){
+  const g = guiaServicios.find(x=>x.id===id);
+  if(!g) return;
+  cajaAbrirVentanaImpresion(guiaConstruirHTMLImpresion(g));
+}
+
 // ── Inicializacion desde Supabase ──────────────────────────────────────────────
 async function inicializar(){
   _initSB(); // init Supabase after SDK is loaded
@@ -2784,6 +2995,7 @@ async function inicializar(){
     if(cfg.recibos_caja) recibosCaja = cfg.recibos_caja;
     if(cfg.recibos_caja_consecutivo!=null) reciboConsecutivoSiguiente = cfg.recibos_caja_consecutivo;
     if(cfg.recibo_negocio) reciboNegocio = cfg.recibo_negocio;
+    if(cfg.guia_servicios) guiaServicios = cfg.guia_servicios;
     // Cache offline
     lsSet('crm_clientes',clientes); lsSet('crm_servicios',servicios);
     lsSet('crm_ciudades',ciudades); lsSet('crm_vendedores',vendedores);
@@ -2793,6 +3005,7 @@ async function inicializar(){
     lsSet('crm_recibos_caja',recibosCaja);
     if(reciboConsecutivoSiguiente!=null) lsSet('crm_recibo_consecutivo',reciboConsecutivoSiguiente);
     if(reciboNegocio) lsSet('crm_recibo_negocio',reciboNegocio);
+    lsSet('crm_guia_servicios',guiaServicios);
     mostrarConexion('online');
   } else {
     // Fallback offline
@@ -2809,6 +3022,7 @@ async function inicializar(){
     const lsRecibos=lsGet('crm_recibos_caja',null); if(lsRecibos) recibosCaja=lsRecibos;
     const lsReciboConsec=lsGet('crm_recibo_consecutivo',null); if(lsReciboConsec!=null) reciboConsecutivoSiguiente=lsReciboConsec;
     const lsNegocio=lsGet('crm_recibo_negocio',null); if(lsNegocio) reciboNegocio=lsNegocio;
+    const lsGuia=lsGet('crm_guia_servicios',null); if(lsGuia) guiaServicios=lsGuia;
     mostrarConexion(_sb ? 'error' : 'config');
   }
 
@@ -2816,6 +3030,7 @@ async function inicializar(){
   renderCajaHistorial(); cajaNuevo();
   renderCobroHistorial(); renderBeneficiarioSelect(); cobroNuevo();
   renderReciboHistorial(); reciboNuevo(); renderNegocioResumen();
+  renderGuiaHistorial(); guiaNuevo();
 
   // Auto-refresh cada 20 segundos para ver cambios de otros usuarios
   if(SUPABASE_URL){
@@ -2833,6 +3048,7 @@ async function inicializar(){
         if(d.recibos_caja){recibosCaja=d.recibos_caja;renderReciboHistorial();}
         if(d.recibos_caja_consecutivo!=null){reciboConsecutivoSiguiente=d.recibos_caja_consecutivo;}
         if(d.recibo_negocio){reciboNegocio=d.recibo_negocio;renderNegocioResumen();}
+        if(d.guia_servicios){guiaServicios=d.guia_servicios;renderGuiaHistorial();}
         poblarFiltros();renderTags();render(true);
         mostrarConexion('online');
       }
