@@ -124,6 +124,13 @@ tbody td{padding:8px 10px;vertical-align:middle}
 .panel{background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:18px 20px;margin-bottom:16px;display:none;box-shadow:0 1px 2px rgba(16,24,40,.04)}
 .panel.open{display:block}
 .panel h3{font-size:13.5px;font-weight:600;margin-bottom:10px}
+.rich-edit{width:100%;min-height:64px;border:1px solid var(--border);border-radius:var(--rs);padding:8px 10px;font-family:inherit;font-size:12.5px;line-height:1.5;background:#fff;outline:none;overflow-wrap:anywhere}
+.rich-edit:focus{border-color:var(--accent)}
+.rich-edit:empty:before{content:attr(data-placeholder);color:#9aa3ad;pointer-events:none}
+.rich-edit img,.rich-view img{display:block;max-width:100%;max-height:420px;border-radius:6px;margin:6px 0;border:1px solid var(--border)}
+.rich-tools{display:flex;align-items:center;gap:10px;margin-top:5px;font-size:11px;color:var(--muted)}
+.rich-tools button{background:none;border:1px solid var(--border);border-radius:5px;padding:3px 9px;font-size:11.5px;cursor:pointer;color:var(--text);font-family:inherit}
+.rich-tools button:hover{background:var(--surface2)}
 .runt-notice{background:#fff8e6;border:1px solid #fcd34d;border-radius:var(--rs);padding:12px 14px;font-size:12px;color:#92400e;margin-bottom:12px;line-height:1.6}
 .runt-link-btn{display:inline-flex;align-items:center;gap:6px;height:34px;padding:0 16px;background:#1a56db;color:#fff;border:none;border-radius:var(--rs);font-family:inherit;font-size:12.5px;font-weight:500;cursor:pointer}
 .runt-link-btn:hover{opacity:.85}
@@ -614,7 +621,11 @@ tbody td{padding:8px 10px;vertical-align:middle}
     </div>
 
     <div class="field"><label>Nombre del servicio</label><input type="text" id="guia-nombre" placeholder="Ej: Expedición de SOAT"></div>
-    <div class="field" style="margin-bottom:16px"><label>Descripción general</label><textarea id="guia-descripcion" rows="2" style="width:100%;border:1px solid var(--border);border-radius:var(--rs);padding:8px 10px;font-family:inherit;font-size:12.5px;resize:vertical" placeholder="Qué es este servicio y para qué sirve, en pocas líneas"></textarea></div>
+    <div class="field" style="margin-bottom:16px">
+      <label>Descripción general</label>
+      <div id="guia-descripcion" class="rich-edit" contenteditable="true" data-placeholder="Qué es este servicio y para qué sirve. Puedes escribir, pegar una imagen (Ctrl+V) o adjuntar una foto."></div>
+      <div class="rich-tools"><button type="button" onclick="guiaAdjuntarFoto('guia-descripcion')">📷 Adjuntar foto</button><span>o pega una imagen con Ctrl+V</span></div>
+    </div>
 
     <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px">
       <span style="font-size:12px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.4px">Pasos del instructivo</span>
@@ -2803,9 +2814,142 @@ let guiaServicios = [];
 let guiaEditandoId = null;
 let guiaPasoId = 1;
 
+// ── Contenido enriquecido (texto + fotos) para descripcion y pasos ─────────────
+function guiaEscapar(t){ return String(t).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+
+// Deja solo etiquetas seguras; las imagenes solo se permiten si son data:image (las que se adjuntan/pegan aqui)
+function guiaSanitizar(html){
+  const tpl = document.createElement('template');
+  tpl.innerHTML = html||'';
+  const PERMITIDAS = {DIV:1,P:1,BR:1,B:1,STRONG:1,I:1,EM:1,U:1,UL:1,OL:1,LI:1,IMG:1,SPAN:1};
+  const PELIGROSAS = ['SCRIPT','STYLE','IFRAME','OBJECT','EMBED','LINK','META'];
+  (function limpiar(nodo){
+    [...nodo.childNodes].forEach(ch=>{
+      if(ch.nodeType===3) return;
+      if(ch.nodeType!==1){ ch.remove(); return; }
+      if(PELIGROSAS.includes(ch.tagName)){ ch.remove(); return; }
+      if(!PERMITIDAS[ch.tagName]){ limpiar(ch); ch.replaceWith(...ch.childNodes); return; }
+      if(ch.tagName==='IMG'){
+        const src = ch.getAttribute('src')||'';
+        if(!/^data:image\/(png|jpe?g|gif|webp);base64,/i.test(src)){ ch.remove(); return; }
+        [...ch.attributes].forEach(a=>{ if(a.name!=='src') ch.removeAttribute(a.name); });
+        return;
+      }
+      [...ch.attributes].forEach(a=>ch.removeAttribute(a.name));
+      limpiar(ch);
+    });
+  })(tpl.content);
+  return tpl.innerHTML;
+}
+
+// Convierte lo guardado (texto plano antiguo o HTML) en HTML seguro para mostrar/editar/imprimir
+function guiaRich(valor){
+  if(!valor) return '';
+  if(/<(img|div|br|p|b|i|u|strong|em|ul|ol|li|span)[\s>\/]/i.test(valor)) return guiaSanitizar(valor);
+  return guiaEscapar(valor).replace(/\n/g,'<br>');
+}
+
+function guiaTieneContenido(html){
+  const t = document.createElement('div');
+  t.innerHTML = html||'';
+  return t.textContent.trim()!=='' || !!t.querySelector('img');
+}
+
+// Lee un editor enriquecido y devuelve HTML limpio ('' si esta vacio)
+function guiaLeerEditor(el){
+  const html = guiaSanitizar(el.innerHTML).trim();
+  return guiaTieneContenido(html) ? html : '';
+}
+
+// Reduce la foto para no inflar la base de datos (max 800px, JPEG)
+function guiaComprimirImagen(file){
+  return new Promise((resolve,reject)=>{
+    const reader = new FileReader();
+    reader.onerror = reject;
+    reader.onload = ev=>{
+      const img = new Image();
+      img.onerror = reject;
+      img.onload = ()=>{
+        const maxW = 800;
+        const esc = Math.min(1, maxW/img.width);
+        const c = document.createElement('canvas');
+        c.width = Math.round(img.width*esc); c.height = Math.round(img.height*esc);
+        const cx = c.getContext('2d');
+        cx.fillStyle = '#fff'; cx.fillRect(0,0,c.width,c.height);
+        cx.drawImage(img,0,0,c.width,c.height);
+        resolve(c.toDataURL('image/jpeg',0.72));
+      };
+      img.src = ev.target.result;
+    };
+    reader.readAsDataURL(file);
+  });
+}
+
+function guiaInsertarImagen(editor, dataUrl){
+  const img = document.createElement('img');
+  img.src = dataUrl;
+  const br = document.createElement('br');
+  const sel = window.getSelection();
+  if(sel.rangeCount && editor.contains(sel.anchorNode)){
+    const r = sel.getRangeAt(0);
+    r.deleteContents();
+    r.insertNode(br);
+    r.insertNode(img);
+    r.setStartAfter(br);
+    r.collapse(true);
+    sel.removeAllRanges(); sel.addRange(r);
+  } else {
+    editor.appendChild(img); editor.appendChild(br);
+  }
+}
+
+async function guiaInsertarArchivos(editor, archivos){
+  const imagenes = [...archivos].filter(f=>f.type && f.type.startsWith('image/'));
+  if(!imagenes.length){ toast('Solo se pueden adjuntar imagenes'); return; }
+  for(const f of imagenes){
+    try{ guiaInsertarImagen(editor, await guiaComprimirImagen(f)); }
+    catch(e){ toast('No se pudo cargar una de las imagenes'); }
+  }
+}
+
+function guiaAdjuntarFoto(editorId){
+  const editor = document.getElementById(editorId);
+  if(!editor) return;
+  const inp = document.createElement('input');
+  inp.type = 'file'; inp.accept = 'image/*'; inp.multiple = true;
+  inp.onchange = ()=>{ if(inp.files.length) guiaInsertarArchivos(editor, inp.files); };
+  inp.click();
+}
+
+// Pegar (Ctrl+V) y arrastrar imagenes dentro de cualquier editor del panel
+function guiaInitEditores(){
+  const panel = document.getElementById('servicios-panel');
+  if(!panel || panel.dataset.richBound) return;
+  panel.dataset.richBound = '1';
+  panel.addEventListener('paste', e=>{
+    const ed = e.target.closest && e.target.closest('.rich-edit');
+    if(!ed) return;
+    e.preventDefault();
+    const imgs = [...(e.clipboardData?.items||[])].filter(i=>i.type.startsWith('image/')).map(i=>i.getAsFile()).filter(Boolean);
+    if(imgs.length){ guiaInsertarArchivos(ed, imgs); return; }
+    const texto = e.clipboardData?.getData('text/plain')||'';
+    if(texto) document.execCommand('insertText', false, texto);
+  });
+  panel.addEventListener('dragover', e=>{
+    if(e.target.closest && e.target.closest('.rich-edit')) e.preventDefault();
+  });
+  panel.addEventListener('drop', e=>{
+    const ed = e.target.closest && e.target.closest('.rich-edit');
+    if(!ed) return;
+    e.preventDefault();
+    if(e.dataTransfer?.files?.length) guiaInsertarArchivos(ed, e.dataTransfer.files);
+  });
+}
+
 function guiaAgregarPaso(titulo, descripcion){
   const cont = document.getElementById('guia-pasos-body');
   const id = 'gp'+(guiaPasoId++);
+  const edId = 'gpd'+id;
   const n = cont.children.length+1;
   const div = document.createElement('div');
   div.id = id;
@@ -2816,8 +2960,10 @@ function guiaAgregarPaso(titulo, descripcion){
       <button type="button" onclick="document.getElementById('${id}').remove();guiaRenumerarPasos()" style="background:none;border:none;cursor:pointer;color:var(--vencido);font-size:15px" title="Eliminar paso">×</button>
     </div>
     <input type="text" class="gp-titulo" value="${(titulo||'').replace(/"/g,'&quot;')}" placeholder="Título del paso (ej: Verificar datos del cliente)" style="width:100%;border:1px solid var(--border);border-radius:4px;height:30px;padding:0 8px;font-family:inherit;font-size:12.5px;font-weight:600;margin-bottom:6px">
-    <textarea class="gp-descripcion" rows="2" style="width:100%;border:1px solid var(--border);border-radius:4px;padding:6px 8px;font-family:inherit;font-size:12px;resize:vertical" placeholder="Explica en detalle qué hacer en este paso">${descripcion||''}</textarea>`;
+    <div id="${edId}" class="rich-edit gp-descripcion" contenteditable="true" data-placeholder="Explica en detalle qué hacer en este paso. Puedes pegar una imagen (Ctrl+V) o adjuntar una foto."></div>
+    <div class="rich-tools"><button type="button" onclick="guiaAdjuntarFoto('${edId}')">📷 Adjuntar foto</button><span>o pega una imagen con Ctrl+V</span></div>`;
   cont.appendChild(div);
+  if(descripcion) div.querySelector('.gp-descripcion').innerHTML = guiaRich(descripcion);
 }
 
 function guiaRenumerarPasos(){
@@ -2829,7 +2975,7 @@ function guiaRenumerarPasos(){
 function guiaLeerPasos(){
   return [...document.querySelectorAll('#guia-pasos-body > div')].map(div=>({
     titulo: div.querySelector('.gp-titulo').value.trim(),
-    descripcion: div.querySelector('.gp-descripcion').value.trim(),
+    descripcion: guiaLeerEditor(div.querySelector('.gp-descripcion')),
   })).filter(p=>p.titulo||p.descripcion);
 }
 
@@ -2838,7 +2984,7 @@ function guiaNuevo(){
   document.getElementById('guia-edit-banner').style.display='none';
   document.getElementById('guia-btn-guardar').textContent='Guardar servicio';
   document.getElementById('guia-nombre').value='';
-  document.getElementById('guia-descripcion').value='';
+  document.getElementById('guia-descripcion').innerHTML='';
   document.getElementById('guia-pasos-body').innerHTML='';
   guiaAgregarPaso();
 }
@@ -2846,14 +2992,14 @@ function guiaNuevo(){
 function guiaLeerFormulario(){
   return {
     nombre: document.getElementById('guia-nombre').value.trim(),
-    descripcion: document.getElementById('guia-descripcion').value.trim(),
+    descripcion: guiaLeerEditor(document.getElementById('guia-descripcion')),
     pasos: guiaLeerPasos(),
   };
 }
 
 function guiaCargarEnFormulario(g){
   document.getElementById('guia-nombre').value = g.nombre||'';
-  document.getElementById('guia-descripcion').value = g.descripcion||'';
+  document.getElementById('guia-descripcion').innerHTML = guiaRich(g.descripcion);
   document.getElementById('guia-pasos-body').innerHTML='';
   (g.pasos||[]).forEach(p=>guiaAgregarPaso(p.titulo,p.descripcion));
   if(!(g.pasos||[]).length) guiaAgregarPaso();
@@ -2943,13 +3089,13 @@ function renderGuiaHistorial(){
         </div>
         ${expandido ? `
         <div style="padding:4px 14px 14px;border-top:1px solid var(--border)">
-          ${g.descripcion?`<p style="font-size:12px;color:var(--muted);margin:10px 0">${g.descripcion.replace(/\n/g,'<br>')}</p>`:''}
+          ${g.descripcion?`<div class="rich-view" style="font-size:12px;color:var(--muted);margin:10px 0">${guiaRich(g.descripcion)}</div>`:''}
           ${pasos.length?pasos.map((p,i)=>`
             <div style="display:flex;gap:10px;margin-top:10px">
               <div style="flex-shrink:0;width:22px;height:22px;border-radius:50%;background:var(--accent);color:#fff;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700">${i+1}</div>
               <div>
                 <div style="font-weight:600;font-size:12.5px">${p.titulo||''}</div>
-                <div style="font-size:12px;color:var(--muted);margin-top:2px">${(p.descripcion||'').replace(/\n/g,'<br>')}</div>
+                <div class="rich-view" style="font-size:12px;color:var(--muted);margin-top:2px">${guiaRich(p.descripcion)}</div>
               </div>
             </div>`).join('') : `<p style="font-size:12px;color:var(--muted)">Sin pasos documentados.</p>`}
         </div>` : ''}
@@ -2964,7 +3110,7 @@ function guiaConstruirHTMLImpresion(g){
       <div class="paso-num">${i+1}</div>
       <div class="paso-cont">
         <div class="paso-titulo">${p.titulo||''}</div>
-        <div class="paso-desc">${(p.descripcion||'').replace(/\n/g,'<br>')}</div>
+        <div class="paso-desc">${guiaRich(p.descripcion)}</div>
       </div>
     </div>`).join('');
   return `<!DOCTYPE html><html><head><meta charset="utf-8"><title>Guía de servicio: ${g.nombre}</title>
@@ -2976,10 +3122,11 @@ function guiaConstruirHTMLImpresion(g){
     .paso-num{flex-shrink:0;width:30px;height:30px;border-radius:50%;background:#1e4d8b;color:#fff;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:13px}
     .paso-titulo{font-weight:700;margin-bottom:3px}
     .paso-desc{color:#333}
+    .desc img,.paso-desc img{display:block;max-width:100%;max-height:360px;border-radius:4px;margin:8px 0;border:1px solid #ddd}
     @media print{ body{padding:20px 30px} }
   </style></head><body>
     <h1>${g.nombre||''}</h1>
-    <div class="desc">${(g.descripcion||'').replace(/\n/g,'<br>')}</div>
+    <div class="desc">${guiaRich(g.descripcion)}</div>
     ${pasosHtml}
   </body></html>`;
 }
@@ -3058,7 +3205,7 @@ async function inicializar(){
   renderCajaHistorial(); cajaNuevo();
   renderCobroHistorial(); renderBeneficiarioSelect(); cobroNuevo();
   renderReciboHistorial(); reciboNuevo(); renderNegocioResumen();
-  renderGuiaHistorial(); guiaNuevo();
+  renderGuiaHistorial(); guiaNuevo(); guiaInitEditores();
 
   // Auto-refresh cada 20 segundos para ver cambios de otros usuarios
   if(SUPABASE_URL){
