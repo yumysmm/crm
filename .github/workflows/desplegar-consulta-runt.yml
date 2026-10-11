@@ -1,7 +1,7 @@
 name: Desplegar consulta-runt
 
 on:
-  workflow_dispatch:
+  workflow_dispatch:            # botón "Run workflow" en la pestaña Actions
   push:
     paths:
       - 'supabase/functions/consulta-runt/**'
