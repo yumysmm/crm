@@ -225,6 +225,10 @@ tbody td{padding:8px 10px;vertical-align:middle}
   .header{flex-direction:column}
   .field-row,.field-row3{grid-template-columns:1fr}
 }
+.venc-bloque{border:1px solid var(--border);border-radius:var(--rs);padding:12px 14px;margin-bottom:12px;background:var(--surface)}
+.venc-barra{height:6px;background:var(--surface2);border-radius:4px;overflow:hidden}
+.venc-barra span{display:block;height:100%;background:var(--accent);transition:width .2s}
+.venc-pill{display:inline-block;padding:2px 8px;border-radius:10px;font-size:11px;font-weight:500}
 </style>
 </head>
 <body>
@@ -271,6 +275,10 @@ tbody td{padding:8px 10px;vertical-align:middle}
           <button class="dropdown-item" onclick="togglePanel('servicios-panel');closeToolsMenu()" title="Guia de servicios para el equipo">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 19.5A2.5 2.5 0 016.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 014 19.5v-15A2.5 2.5 0 016.5 2z"/><line x1="9" y1="7" x2="15" y2="7"/><line x1="9" y1="11" x2="15" y2="11"/></svg>
             Guía de Servicios
+          </button>
+          <button class="dropdown-item" onclick="togglePanel('venc-panel');closeToolsMenu()" title="Consultar vencimientos en el RUNT">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><line x1="21" y1="21" x2="16.5" y2="16.5"/></svg>
+            Vencimientos RUNT
           </button>
           <button class="dropdown-item" onclick="abrirMensajes();closeToolsMenu()">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/></svg>
@@ -650,6 +658,53 @@ tbody td{padding:8px 10px;vertical-align:middle}
     </div>
   </div>
 
+  <!-- Vencimientos RUNT Panel -->
+  <div class="panel" id="venc-panel">
+    <h3>Vencimientos RUNT</h3>
+    <p style="font-size:11.5px;color:var(--muted);margin:-6px 0 14px">Consulta automática de las fechas de SOAT y tecnomecánica con la placa y la cédula del propietario. Los resultados se revisan antes de aplicarse.</p>
+
+    <div class="venc-bloque">
+      <div style="font-size:12px;margin-bottom:8px" id="venc-conexion">Conexión sin verificar.</div>
+      <button class="btn btn-outline btn-sm" onclick="vencVerificarConexion()">Verificar conexión</button>
+    </div>
+
+    <div class="venc-bloque">
+      <div class="field-row" style="align-items:end">
+        <div class="field" style="margin:0"><label>Vencen en los próximos</label>
+          <select id="venc-ventana" onchange="vencActualizarResumen()"><option value="30">30 días</option><option value="45">45 días</option><option value="60" selected>60 días</option><option value="90">90 días</option></select></div>
+        <label style="font-size:12px;display:flex;gap:6px;align-items:center;padding-bottom:9px"><input type="checkbox" id="venc-vencidos" onchange="vencActualizarResumen()"> Incluir vencidos (hasta 90 días)</label>
+      </div>
+      <div class="field" style="margin:10px 0 0"><label>Tipo de consulta</label>
+        <select id="venc-modo" onchange="vencActualizarResumen()"><option value="basica">Básica: SOAT y tecnomecánica (1 crédito)</option><option value="completa">Completa: + multas SIMIT e impuestos (3 créditos)</option></select></div>
+      <div id="venc-resumen" style="font-size:12.5px;margin:10px 0"></div>
+      <div style="display:flex;gap:8px">
+        <button class="btn btn-blue" id="venc-btn-consultar" onclick="vencConsultarTodos()">Consultar en el RUNT</button>
+        <button class="btn btn-outline" id="venc-btn-detener" style="display:none" onclick="vencDetener=true">Detener</button>
+      </div>
+      <div id="venc-progreso" style="display:none;margin-top:10px"></div>
+      <div id="venc-resultados"></div>
+    </div>
+
+    <div class="venc-bloque">
+      <div style="font-size:12.5px;font-weight:600;margin-bottom:6px">Clientes con multas o impuestos pendientes</div>
+      <div id="venc-alertas"></div>
+    </div>
+
+    <div class="venc-bloque">
+      <div style="font-size:12.5px;font-weight:600;margin-bottom:6px">Modo prueba</div>
+      <p style="font-size:11.5px;color:var(--muted);margin-bottom:8px">Pega la respuesta de PlacApi (o carga el archivo) para ver cómo se interpretan las fechas. No modifica clientes.</p>
+      <textarea id="venc-prueba-txt" rows="6" style="width:100%;font-family:'DM Mono',monospace;font-size:11.5px;padding:8px;border:1px solid var(--border);border-radius:var(--rs)"></textarea>
+      <div style="display:flex;gap:8px;flex-wrap:wrap;margin:8px 0;align-items:center">
+        <select id="venc-prueba-cli" style="height:30px;max-width:260px"></select>
+        <button class="btn btn-blue btn-sm" onclick="vencProbar()">Analizar</button>
+        <label class="btn btn-outline btn-sm" style="cursor:pointer">Cargar archivo<input type="file" accept=".json,.txt" style="display:none" onchange="vencCargarArchivo(this)"></label>
+        <button class="btn btn-outline btn-sm" onclick="vencEjemplo('full')">Ejemplo consulta-full</button>
+        <button class="btn btn-outline btn-sm" onclick="vencEjemplo('api')">Ejemplo /api/consulta</button>
+      </div>
+      <div id="venc-prueba-out"></div>
+    </div>
+  </div>
+
   <!-- Vista de clientes: stats + tabs + tabla (se oculta al abrir Cuadre de Caja) -->
   <div id="clientes-view">
   <!-- Stats -->
@@ -759,6 +814,18 @@ tbody td{padding:8px 10px;vertical-align:middle}
         <div class="field"><label>Cilindraje (cc)</label><input id="f-cilindraje" type="number" placeholder="125" min="0" step="1"></div>
       </div>
       <div class="field"><label>Numero celular (sin +57)</label><input id="f-celular" type="tel" placeholder="3001234567" maxlength="10"></div>
+      <div class="field-row">
+        <div class="field"><label>Tipo de documento del propietario</label>
+          <select id="f-doc-tipo">
+            <option value="CC">Cédula de ciudadanía (CC)</option>
+            <option value="CE">Cédula de extranjería (CE)</option>
+            <option value="NIT">NIT</option>
+            <option value="TI">Tarjeta de identidad (TI)</option>
+            <option value="PA">Pasaporte (PA)</option>
+          </select>
+        </div>
+        <div class="field"><label>Documento del propietario</label><input id="f-doc-numero" type="text" placeholder="Para consultar el RUNT" maxlength="15" autocomplete="off"></div>
+      </div>
       <div class="field-row">
         <div class="field"><label>Valor SOAT ($)</label><input id="f-valor-soat" type="number" placeholder="0" min="0" step="1000"></div>
         <div class="field"><label>Valor Servicio ($)</label><input id="f-valor-svc" type="number" placeholder="20000" min="0" step="1000"></div>
@@ -1381,6 +1448,8 @@ function abrirModal(id){
   document.getElementById('f-celular').value=c?.celular||'';
   document.getElementById('f-tipo-vehiculo').value=c?.tipoVehiculo||'moto';
   document.getElementById('f-cilindraje').value=c?.cilindraje||'';
+  document.getElementById('f-doc-tipo').value=c?.docTipo||'CC';
+  document.getElementById('f-doc-numero').value=c?.docNumero||'';
   poblarSelectsModal(c);
   document.getElementById('modal').style.display='block';
   setTimeout(()=>document.getElementById('f-nombre').focus(),50);
@@ -1401,11 +1470,13 @@ function guardarCliente(){
   const vendedor=document.getElementById('f-vendedor').value;
   const tipoVehiculo=document.getElementById('f-tipo-vehiculo').value;
   const cilindraje=parseInt(document.getElementById('f-cilindraje').value)||0;
+  const docTipo=document.getElementById('f-doc-tipo').value;
+  const docNumero=document.getElementById('f-doc-numero').value.toUpperCase().replace(/[^A-Z0-9]/g,'');
   const valorSoat=parseFloat(document.getElementById('f-valor-soat').value)||0;
   const valorSvc=parseFloat(document.getElementById('f-valor-svc').value)||20000;
   if(!nombre||!placa||!fecha){alert('Complete nombre, placa y fecha.');return;}
-  if(editId){const c=clientes.find(x=>x.id===editId);Object.assign(c,{nombre,placa,fecha,celular,servicio,ciudad,vendedor,tipoVehiculo,cilindraje,valorSoat,valorSvc});}
-  else clientes.push({id:nextId++,nombre,placa,fecha,celular,servicio,ciudad,vendedor,tipoVehiculo,cilindraje,valorSoat,valorSvc,notifFecha:null});
+  if(editId){const c=clientes.find(x=>x.id===editId);Object.assign(c,{nombre,placa,fecha,celular,servicio,ciudad,vendedor,tipoVehiculo,cilindraje,docTipo,docNumero,valorSoat,valorSvc});}
+  else clientes.push({id:nextId++,nombre,placa,fecha,celular,servicio,ciudad,vendedor,tipoVehiculo,cilindraje,docTipo,docNumero,valorSoat,valorSvc,notifFecha:null});
   guardarTodo();document.getElementById('modal').style.display='none';
   renderTags();render();poblarFiltros();toast(editId?'Cliente actualizado':'Cliente agregado');
 }
@@ -1414,13 +1485,15 @@ function guardarCliente(){
 function togglePanel(id){
   const p = document.getElementById(id);
   p.classList.toggle('open');
-  if(id==='caja-panel' || id==='cobro-panel' || id==='recibo-panel' || id==='servicios-panel'){
+  if(id==='venc-panel' && p.classList.contains('open')) renderVenc();
+  if(id==='caja-panel' || id==='cobro-panel' || id==='recibo-panel' || id==='servicios-panel' || id==='venc-panel'){
     const cv = document.getElementById('clientes-view');
     const cajaOpen = document.getElementById('caja-panel').classList.contains('open');
     const cobroOpen = document.getElementById('cobro-panel').classList.contains('open');
     const reciboOpen = document.getElementById('recibo-panel').classList.contains('open');
     const serviciosOpen = document.getElementById('servicios-panel').classList.contains('open');
-    cv.style.display = (cajaOpen||cobroOpen||reciboOpen||serviciosOpen) ? 'none' : '';
+    const vencOpen = document.getElementById('venc-panel').classList.contains('open');
+    cv.style.display = (cajaOpen||cobroOpen||reciboOpen||serviciosOpen||vencOpen) ? 'none' : '';
   }
 }
 function toggleToolsMenu(e){ e.stopPropagation(); document.getElementById('tools-menu').classList.toggle('open'); }
@@ -1506,9 +1579,12 @@ function procesarArchivo(file){
         const tvRaw=(r['tipo_vehiculo']||r['tipo de vehiculo']||r['tipo']||'moto').toLowerCase();
         const tipoVehiculo=tvRaw.includes('motocarro')?'motocarro':tvRaw.includes('carro')||tvRaw.includes('auto')?'carro':'moto';
         const cilindraje=parseInt((r['cilindraje']||r['cc']||'0').toString().replace(/[^0-9]/g,''))||0;
+        const dtRaw=(r['tipo_documento']||r['tipo documento']||r['tipo de documento']||r['tipo doc']||'CC').toUpperCase();
+        const docTipo=dtRaw.includes('EXTRANJ')||dtRaw==='CE'?'CE':dtRaw.includes('NIT')?'NIT':dtRaw.includes('TARJETA')||dtRaw==='TI'?'TI':dtRaw.includes('PASAPORTE')||dtRaw==='PA'?'PA':'CC';
+        const docNumero=(r['documento']||r['cedula']||r['numero_documento']||r['numero documento']||r['nit']||'').toUpperCase().replace(/[^A-Z0-9]/g,'');
         let fecha=r['fecha']||r['fecha de vencimiento']||r['vencimiento']||'';
         if(fecha&&fecha.includes('/')){const p=fecha.split('/');if(p.length===3)fecha=p[2].length===4?`${p[2]}-${p[1].padStart(2,'0')}-${p[0].padStart(2,'0')}`:`${p[0]}-${p[1].padStart(2,'0')}-${p[2].padStart(2,'0')}`;}
-        return{nombre,placa,fecha,celular,servicio,ciudad,vendedor,tipoVehiculo,cilindraje,valorSoat,valorSvc,notifFecha:null};
+        return{nombre,placa,fecha,celular,servicio,ciudad,vendedor,tipoVehiculo,cilindraje,docTipo,docNumero,valorSoat,valorSvc,notifFecha:null};
       }).filter(r=>r.nombre&&r.placa&&r.fecha);
       if(!parsed.length){alert('No se encontraron filas validas.');return;}
       mostrarPreview(parsed);
@@ -1539,23 +1615,23 @@ function exportarExcel(modo){
     const{est,dias}=calcEstado(c.fecha);
     return{'N°':i+1,'Nombre':c.nombre,'Placa':c.placa,'Servicio':getSvc(c.servicio).nombre,
       'Ciudad':c.ciudad||'','Vendedor':c.vendedor||'','Fecha Vencimiento':c.fecha,
-      'Tipo Vehiculo':tvLabel(c.tipoVehiculo),'Cilindraje':c.cilindraje||'',
+      'Tipo Vehiculo':tvLabel(c.tipoVehiculo),'Cilindraje':c.cilindraje||'','Tipo Doc':c.docNumero?(c.docTipo||'CC'):'','Documento':c.docNumero||'',
       'Estado':est,'Dias Restantes':dias,'Celular':c.celular||'',
       'Valor SOAT':c.valorSoat||0,'Valor Servicio':c.valorSvc||20000,'Total':(c.valorSoat||0)+(c.valorSvc||20000),
       'Notificado':c.notifFecha||'No','Link WhatsApp':c.celular?'https://wa.me/57'+c.celular:''};
   });
   const wb=XLSX.utils.book_new();const ws=XLSX.utils.json_to_sheet(rows);
-  ws['!cols']=[{wch:5},{wch:26},{wch:10},{wch:18},{wch:14},{wch:16},{wch:18},{wch:12},{wch:11},{wch:12},{wch:14},{wch:14},{wch:14},{wch:14},{wch:14},{wch:14},{wch:35}];
+  ws['!cols']=[{wch:5},{wch:26},{wch:10},{wch:18},{wch:14},{wch:16},{wch:18},{wch:12},{wch:11},{wch:9},{wch:16},{wch:12},{wch:14},{wch:14},{wch:14},{wch:14},{wch:14},{wch:14},{wch:35}];
   XLSX.utils.book_append_sheet(wb,ws,'Clientes');
   XLSX.writeFile(wb,(modo==='todos'?'CRM_todos':modo==='vencidos'?'CRM_vencidos':'CRM_filtro')+'_'+hoyStr+'.xlsx');
   toast(`Exportados ${rows.length} clientes`);
 }
 function descargarPlantilla(){
   const rows=[
-    {nombre:'Carlos Rodriguez',placa:'ABC123',fecha:'2026-05-15',celular:'3001234567',servicio:'SOAT',ciudad:'Medellin',vendedor:'Juan Gomez',tipo_vehiculo:'Moto',cilindraje:125,valor_soat:195000,valor_servicio:20000},
-    {nombre:'Maria Garcia',    placa:'XYZ456',fecha:'2026-06-20',celular:'3119876543',servicio:'Revision Tecnica',ciudad:'Bogota',vendedor:'Maria Lopez',tipo_vehiculo:'Carro',cilindraje:1600,valor_soat:0,valor_servicio:20000},
-    {nombre:'Ana Lopez',       placa:'GHI012',fecha:'2026-07-10',celular:'3156789012',servicio:'Seguro Todo Riesgo',ciudad:'Cali',vendedor:'Carlos Perez',tipo_vehiculo:'Moto',cilindraje:150,valor_soat:0,valor_servicio:20000},
-    {nombre:'Pedro Ramirez',   placa:'MTC789',fecha:'2026-08-05',celular:'3201234567',servicio:'SOAT',ciudad:'Barranquilla',vendedor:'Juan Gomez',tipo_vehiculo:'Motocarro',cilindraje:200,valor_soat:220000,valor_servicio:20000},
+    {nombre:'Carlos Rodriguez',placa:'ABC123',fecha:'2026-05-15',celular:'3001234567',servicio:'SOAT',ciudad:'Medellin',vendedor:'Juan Gomez',tipo_vehiculo:'Moto',cilindraje:125,tipo_documento:'CC',documento:'1020304050',valor_soat:195000,valor_servicio:20000},
+    {nombre:'Maria Garcia',    placa:'XYZ456',fecha:'2026-06-20',celular:'3119876543',servicio:'Revision Tecnica',ciudad:'Bogota',vendedor:'Maria Lopez',tipo_vehiculo:'Carro',cilindraje:1600,tipo_documento:'CC',documento:'1020304051',valor_soat:0,valor_servicio:20000},
+    {nombre:'Ana Lopez',       placa:'GHI012',fecha:'2026-07-10',celular:'3156789012',servicio:'Seguro Todo Riesgo',ciudad:'Cali',vendedor:'Carlos Perez',tipo_vehiculo:'Moto',cilindraje:150,tipo_documento:'CC',documento:'1020304052',valor_soat:0,valor_servicio:20000},
+    {nombre:'Pedro Ramirez',   placa:'MTC789',fecha:'2026-08-05',celular:'3201234567',servicio:'SOAT',ciudad:'Barranquilla',vendedor:'Juan Gomez',tipo_vehiculo:'Motocarro',cilindraje:200,tipo_documento:'NIT',documento:'900123456',valor_soat:220000,valor_servicio:20000},
   ];
   const wb=XLSX.utils.book_new();const ws=XLSX.utils.json_to_sheet(rows);
   ws['!cols']=[{wch:26},{wch:10},{wch:14},{wch:14},{wch:18},{wch:14},{wch:16},{wch:14},{wch:12},{wch:14},{wch:16}];
@@ -3143,6 +3219,275 @@ function guiaImprimirRegistro(id){
   cajaAbrirVentanaImpresion(guiaConstruirHTMLImpresion(g));
 }
 
+// ── Vencimientos RUNT (modulo nuevo e independiente) ────────────────────────────
+const VENC_FUNCTION_URL = SUPABASE_URL + '/functions/v1/consulta-runt';
+const VENC_COSTO_COP = 349;
+const VENC_CREDITOS = {basica:1, completa:3};
+const vencModo = ()=> (document.getElementById('venc-modo')||{value:'basica'}).value==='completa' ? 'completa' : 'basica';
+const VENC_REUSO_DIAS = 7;
+let vencEnCurso = false, vencDetener = false;
+let vencResultados = []; // [{id, placa, nombre, tipo, actual, runt, cmp, error}]
+
+function vencEsc(s){return String(s==null?'':s).replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));}
+
+function vencTipoServicio(c){
+  const s = getSvc(c.servicio);
+  const t = ((c.servicio||'')+' '+(s&&s.nombre||'')).toLowerCase();
+  if(/soat/.test(t)) return 'soat';
+  if(/rtm|tecno|revisi/.test(t)) return 'rtm';
+  return null;
+}
+
+function vencFechaISO(v){
+  if(!v) return null;
+  let y,m,d;
+  const s = String(v).trim();
+  let r = s.match(/^(\d{4})-(\d{2})-(\d{2})/);
+  if(r){y=+r[1];m=+r[2];d=+r[3];}
+  else{
+    r = s.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/);
+    if(!r) return null;
+    d=+r[1];m=+r[2];y=+r[3];
+  }
+  if(y<2000||y>2100) return null;
+  const dt = new Date(Date.UTC(y,m-1,d));
+  if(dt.getUTCFullYear()!==y||dt.getUTCMonth()!==m-1||dt.getUTCDate()!==d) return null;
+  return y+'-'+String(m).padStart(2,'0')+'-'+String(d).padStart(2,'0');
+}
+
+function vencElegirVigencia(bloque){
+  // bloque: objeto con fechaVencimiento e historico[] | array de registros
+  if(!bloque) return null;
+  let regs = [];
+  if(Array.isArray(bloque)) regs = bloque;
+  else{
+    if(Array.isArray(bloque.historico)) regs = regs.concat(bloque.historico);
+    if(bloque.fechaVencimiento) regs.push(bloque);
+  }
+  let mejor = null;
+  regs.forEach(r=>{
+    if(!r) return;
+    const est = String(r.estado||r.estadoSoat||'').toUpperCase();
+    if(/ANUL|CANCEL/.test(est)) return;
+    const f = vencFechaISO(r.fechaVencimiento||r.vencimiento||r.fecha_vencimiento);
+    if(!f) return;
+    if(!mejor || f>mejor.fecha) mejor = {fecha:f, entidad:r.aseguradora||r.cda||'', ref:r.poliza||r.certificadoNumero||''};
+  });
+  return mejor;
+}
+
+function vencNormalizar(resp){
+  const out = {soat:null, rtm:null, exento:false, ok:false, simit:null, impuestos:null, vehiculo:null};
+  if(!resp || typeof resp!=='object') return out;
+  let soat, rtm;
+  if(resp.soat && resp.soat.data!==undefined || resp.rtm && resp.rtm.data!==undefined){
+    soat = resp.soat && resp.soat.data; rtm = resp.rtm && resp.rtm.data;      // forma consulta-full
+  } else {
+    const d = resp.data && typeof resp.data==='object' ? resp.data : resp;      // forma /api/consulta
+    soat = d.soat; rtm = d.tecnoMecanica || d.rtm;
+  }
+  out.soat = vencElegirVigencia(soat);
+  out.rtm = vencElegirVigencia(rtm);
+  if(rtm && !Array.isArray(rtm) && rtm.exento===true) out.exento = true;
+  if(resp.simit && resp.simit.data){
+    const d = resp.simit.data, m = Array.isArray(d.multas)?d.multas:[];
+    out.simit = {totalDeuda:+d.totalDeuda||0, totalMultas:+d.totalMultas||m.length||0, pazSalvo:d.pazSalvo===true, acuerdos:+d.acuerdosPago||0,
+      multas:m.slice(0,20).map(x=>({fecha:x.fecha||'',infraccion:x.infraccion||x.codigo||'',valor:+x.valor||0,estado:x.estado||''}))};
+  }
+  if(resp.impuestos && resp.impuestos.data){
+    const d = resp.impuestos.data, a = Array.isArray(d.anios)?d.anios:[];
+    out.impuestos = {totalPendiente:+d.totalPendiente||0, departamento:d.departamento||'',
+      pendientes:a.filter(x=>x&&x.pagado===false).map(x=>({anio:x.anio,valor:+x.valor||0}))};
+  }
+  if(resp.vehicle && resp.vehicle.data){
+    const v = resp.vehicle.data;
+    out.vehiculo = {marca:v.marca||'',linea:v.linea||'',modelo:v.modelo||'',cilindraje:v.cilindraje||'',clase:v.clase||'',servicio:v.servicio||''};
+  }
+  out.ok = !!(out.soat || out.rtm || out.exento || soat!==undefined || rtm!==undefined);
+  return out;
+}
+
+function vencComparar(actual, runt){
+  if(!runt) return 'sin-dato';
+  if(!actual) return 'nuevo';
+  if(runt===actual) return 'igual';
+  return runt>actual ? 'nuevo' : 'anterior';
+}
+
+function vencElegibles(opts){
+  opts = opts||{};
+  const ventana = +(document.getElementById('venc-ventana')||{value:60}).value || 60;
+  const incVenc = !!(document.getElementById('venc-vencidos')||{}).checked;
+  const out = [], omit = {sinDoc:0, sinServ:0, fuera:0, reciente:0};
+  clientes.forEach(c=>{
+    const placa = (c.placa||'').toUpperCase().replace(/[^A-Z0-9]/g,'');
+    if(!placa || !c.docNumero){ omit.sinDoc++; return; }
+    const t = vencTipoServicio(c);
+    if(!t){ omit.sinServ++; return; }
+    if(!c.fecha){ omit.fuera++; return; }
+    const dias = calcEstado(c.fecha).dias;
+    if(dias>ventana || (dias<0 && (!incVenc || dias<-90))){ omit.fuera++; return; }
+    if(c.runt && c.runt.consultado){
+      const edad = (Date.now()-new Date(c.runt.consultado).getTime())/86400000;
+      const modoPrev = c.runt.simit!==undefined || c.runt.impuestos!==undefined ? 'completa' : (c.runt.modo||'basica');
+      if(edad<VENC_REUSO_DIAS && (modoPrev==='completa' || vencModo()==='basica')){ omit.reciente++; return; }
+    }
+    out.push({c,placa,tipo:t,dias});
+  });
+  return {lista:out, omit};
+}
+
+function vencActualizarResumen(){
+  const el = document.getElementById('venc-resumen'); if(!el) return;
+  const {lista,omit} = vencElegibles();
+  const costo = lista.length*VENC_COSTO_COP*VENC_CREDITOS[vencModo()];
+  el.innerHTML = `<b>${lista.length}</b> cliente(s) a consultar · costo estimado ≈ <b>$${costo.toLocaleString('es-CO')}</b> COP`+
+    `<div style="font-size:11px;color:var(--muted);margin-top:3px">Omitidos: ${omit.sinDoc} sin placa/cédula · ${omit.sinServ} con servicio distinto a SOAT/Tecno · ${omit.fuera} fuera de la ventana · ${omit.reciente} consultados hace menos de ${VENC_REUSO_DIAS} días</div>`;
+  const b = document.getElementById('venc-btn-consultar'); if(b) b.disabled = vencEnCurso || !lista.length;
+}
+
+async function vencLlamar(payload){
+  const ctl = new AbortController(); const to = setTimeout(()=>ctl.abort(),40000);
+  try{
+    const r = await fetch(VENC_FUNCTION_URL,{method:'POST',signal:ctl.signal,
+      headers:{'Content-Type':'application/json','apikey':SUPABASE_KEY,'Authorization':'Bearer '+SUPABASE_KEY},
+      body:JSON.stringify(payload)});
+    let j=null; try{ j = await r.json(); }catch(e){}
+    if(!r.ok) return {error:(j&&j.error)||('Error HTTP '+r.status), parar:!!(j&&j.parar)||r.status===404};
+    return {data:j};
+  }catch(e){
+    return {error: e.name==='AbortError'?'Tiempo de espera agotado':'Sin conexión con la función', parar:false};
+  }finally{ clearTimeout(to); }
+}
+
+async function vencVerificarConexion(){
+  const el = document.getElementById('venc-conexion'); el.textContent='Verificando...';
+  const r = await vencLlamar({ping:true});
+  if(r.error){ el.innerHTML = `<span style="color:#cf222e">✗ ${vencEsc(r.error)}</span> — verifica que la función <code>consulta-runt</code> esté desplegada.`; return; }
+  const d = r.data||{};
+  el.innerHTML = `<span style="color:#1a7f37">✓ Función activa</span> · uso de hoy: ${+d.usoHoy||0} / ${+d.tope||'?'}${d.clave===false?' · <span style="color:#cf222e">falta la clave de PlacApi</span>':''}`;
+}
+
+function vencBarra(txt,pct){
+  const b = document.getElementById('venc-progreso'); if(!b) return;
+  b.style.display='block';
+  b.innerHTML = `<div style="font-size:12px;margin-bottom:5px">${txt}</div><div class="venc-barra"><span style="width:${pct}%"></span></div>`;
+}
+
+async function vencConsultarTodos(){
+  if(vencEnCurso) return;
+  const {lista} = vencElegibles();
+  if(!lista.length){ toast('No hay clientes para consultar'); return; }
+  const modo = vencModo();
+  const costo = lista.length*VENC_COSTO_COP*VENC_CREDITOS[modo];
+  if(!confirm(`Se consultarán ${lista.length} cliente(s) en el RUNT (${modo==='completa'?'consulta completa: SOAT, tecno, multas SIMIT e impuestos':'solo SOAT y tecnomecánica'}).\nCosto estimado: ≈ $${costo.toLocaleString('es-CO')} COP.\n\n¿Continuar?`)) return;
+  vencEnCurso = true; vencDetener = false; vencResultados = [];
+  document.getElementById('venc-btn-detener').style.display='';
+  vencActualizarResumen();
+  let hechos = 0, paro = '';
+  for(const it of lista){
+    if(vencDetener){ paro='Detenido por el usuario'; break; }
+    vencBarra(`Consultando ${vencEsc(it.placa)} (${hechos+1} de ${lista.length})`, Math.round(hechos/lista.length*100));
+    const r = await vencLlamar({placa:it.placa, docType:it.c.docTipo||'CC', docNumber:it.c.docNumero, modo});
+    const cli = clientes.find(x=>x.id===it.c.id) || it.c;
+    if(r.error){
+      vencResultados.push({id:cli.id,placa:it.placa,nombre:cli.nombre,tipo:it.tipo,actual:cli.fecha,error:r.error});
+      if(r.parar){ paro = r.error; break; }
+    } else {
+      const n = vencNormalizar(r.data);
+      cli.runt = {consultado:new Date().toISOString(), modo, soat:n.soat, rtm:n.rtm, exento:n.exento};
+      if(modo==='completa'){ cli.runt.simit = n.simit; cli.runt.impuestos = n.impuestos; cli.runt.vehiculo = n.vehiculo; }
+      const f = it.tipo==='soat' ? n.soat : n.rtm;
+      vencResultados.push({id:cli.id,placa:it.placa,nombre:cli.nombre,tipo:it.tipo,actual:cli.fecha,runt:f?f.fecha:null,
+        cmp:vencComparar(cli.fecha,f&&f.fecha), exento:n.exento&&it.tipo==='rtm', simit:n.simit, imp:n.impuestos, error:n.ok?null:'Respuesta sin datos'});
+      lsSet('crm_clientes',clientes); await dbGuardar('clientes',clientes);
+    }
+    hechos++;
+  }
+  vencEnCurso = false;
+  document.getElementById('venc-btn-detener').style.display='none';
+  vencBarra(paro?`Detenido: ${vencEsc(paro)} (${hechos} consultados)`:`Listo: ${hechos} consultados`, 100);
+  vencRenderResultados(); vencActualizarResumen();
+}
+
+const vencCOP = n=>'$'+Math.round(n||0).toLocaleString('es-CO');
+function vencMultasTxt(m){ if(!m) return '—'; return m.totalMultas>0||m.totalDeuda>0 ? `<span style="color:#cf222e;font-weight:500">${m.totalMultas} · ${vencCOP(m.totalDeuda)}</span>` : '<span style="color:#1a7f37">Paz y salvo</span>'; }
+function vencImpTxt(i){ if(!i) return '—'; return i.totalPendiente>0 ? `<span style="color:#cf222e;font-weight:500">${vencCOP(i.totalPendiente)}</span>` : '<span style="color:#1a7f37">Al día</span>'; }
+function vencTablaHTML(filas, conChecks){
+  const lbl = {igual:'Coincide',nuevo:'RUNT más reciente',anterior:'RUNT anterior','sin-dato':'Sin dato'};
+  const col = {igual:'#1a7f37',nuevo:'#1e4d8b',anterior:'#9a6700','sin-dato':'#66707d'};
+  let h = '<div class="tbl-outer"><table style="min-width:640px"><thead><tr>'+(conChecks?'<th></th>':'')+'<th>Placa</th><th>Cliente</th><th>Servicio</th><th>En CRM</th><th>RUNT</th><th>Multas SIMIT</th><th>Impuesto</th><th>Resultado</th></tr></thead><tbody>';
+  filas.forEach((f,i)=>{
+    const res = f.error ? `<span class="venc-pill" style="background:#ffd7d7;color:#cf222e">${vencEsc(f.error)}</span>` :
+      f.exento ? '<span class="venc-pill" style="background:#eef;color:#445">Exento de RTM</span>' :
+      `<span class="venc-pill" style="background:${col[f.cmp]}1a;color:${col[f.cmp]}">${lbl[f.cmp]||''}</span>`;
+    const chk = conChecks ? `<td>${(!f.error&&(f.cmp==='nuevo'||f.cmp==='anterior'))?`<input type="checkbox" class="venc-chk" data-i="${i}" ${f.cmp==='nuevo'?'checked':''}>`:''}</td>` : '';
+    h += `<tr>${chk}<td><b>${vencEsc(f.placa)}</b></td><td>${vencEsc(f.nombre||'—')}</td><td>${f.tipo==='soat'?'SOAT':'Tecnomecánica'}</td><td>${vencEsc(f.actual||'—')}</td><td>${vencEsc(f.runt||'—')}</td><td>${vencMultasTxt(f.simit)}</td><td>${vencImpTxt(f.imp)}</td><td>${res}</td></tr>`;
+  });
+  return h+'</tbody></table></div>';
+}
+
+function vencRenderResultados(){
+  const box = document.getElementById('venc-resultados'); if(!box) return;
+  if(!vencResultados.length){ box.innerHTML=''; return; }
+  const c = k=>vencResultados.filter(r=>r.cmp===k).length, err = vencResultados.filter(r=>r.error).length;
+  box.innerHTML = `<div style="font-size:12.5px;margin:10px 0">Coinciden: <b>${c('igual')}</b> · RUNT más reciente: <b>${c('nuevo')}</b> · RUNT anterior: <b>${c('anterior')}</b> · Errores: <b>${err}</b></div>`+
+    vencTablaHTML(vencResultados,true)+
+    `<div style="display:flex;gap:8px;margin-top:10px"><button class="btn btn-blue" onclick="vencAplicar()">Aplicar seleccionados</button><button class="btn btn-outline" onclick="vencLimpiar()">Limpiar resultados</button></div>`;
+}
+
+async function vencAplicar(){
+  const marcados = [...document.querySelectorAll('.venc-chk:checked')].map(e=>vencResultados[+e.dataset.i]).filter(Boolean);
+  if(!marcados.length){ toast('No hay filas seleccionadas'); return; }
+  let n=0;
+  marcados.forEach(r=>{
+    const c = clientes.find(x=>x.id===r.id);
+    if(c && r.runt){ c.fecha=r.runt; c.notifFecha=null; n++; }
+  });
+  vencResultados = vencResultados.filter(r=>!marcados.includes(r));
+  lsSet('crm_clientes',clientes); await dbGuardar('clientes',clientes);
+  render(true); vencRenderResultados(); vencActualizarResumen();
+  toast(n+' fecha(s) actualizada(s)');
+}
+function vencLimpiar(){ vencResultados=[]; vencRenderResultados(); const b=document.getElementById('venc-progreso'); if(b) b.style.display='none'; }
+
+// Modo prueba: solo analiza una respuesta pegada, NUNCA modifica clientes
+const VENC_EJ_FULL = {soat:{status:'ok',data:{fechaVencimiento:'19/09/2026',historico:[{fechaVencimiento:'2026-09-19',estado:'VIGENTE'}]}},rtm:{status:'ok',data:{exento:false,fechaVencimiento:'22/09/2026',historico:[{fechaVencimiento:'2026-09-22',estado:'APROBADA'}]}}};
+const VENC_EJ_API = {data:{soat:[{fechaVencimiento:'19/09/2026',estado:'VIGENTE'}],tecnoMecanica:[{fechaVencimiento:'22/09/2026',estado:'APROBADA'}]}};
+function vencEjemplo(k){ document.getElementById('venc-prueba-txt').value = JSON.stringify(k==='full'?VENC_EJ_FULL:VENC_EJ_API,null,2); }
+function vencCargarArchivo(inp){
+  const f = inp.files&&inp.files[0]; if(!f) return;
+  const rd = new FileReader(); rd.onload=()=>{document.getElementById('venc-prueba-txt').value=rd.result;}; rd.readAsText(f); inp.value='';
+}
+function vencProbar(){
+  const out = document.getElementById('venc-prueba-out'); let j;
+  try{ j = JSON.parse(document.getElementById('venc-prueba-txt').value); }
+  catch(e){ out.innerHTML='<span style="color:#cf222e">El texto no es un JSON válido.</span>'; return; }
+  const n = vencNormalizar(j);
+  const cid = +document.getElementById('venc-prueba-cli').value;
+  const cli = cid ? clientes.find(c=>c.id===cid) : null;
+  const fila = t=>{ const f=n[t]; const act = cli&&vencTipoServicio(cli)===t ? cli.fecha : null;
+    return `<tr><td>${t==='soat'?'SOAT':'Tecnomecánica'}</td><td>${f?vencEsc(f.fecha):'—'}</td><td>${vencEsc(f?(f.entidad||''):'')}</td><td>${act?vencEsc(act):'—'}</td><td>${act?vencEsc(vencComparar(act,f&&f.fecha)):''}</td></tr>`; };
+  out.innerHTML = `<div style="font-size:12px;margin:8px 0">${n.ok?'Respuesta reconocida':'<span style="color:#cf222e">No se reconoció soat/rtm en la respuesta</span>'}${n.exento?' · vehículo exento de RTM':''} · <i>modo prueba: no se modificó ningún cliente</i></div>`+
+    `<div class="tbl-outer"><table style="min-width:520px"><thead><tr><th>Servicio</th><th>Vence (RUNT)</th><th>Entidad</th><th>En CRM</th><th>Comparación</th></tr></thead><tbody>${fila('soat')}${fila('rtm')}</tbody></table></div>`+
+    `<div style="font-size:12px;margin-top:8px">Multas SIMIT: ${vencMultasTxt(n.simit)} · Impuesto: ${vencImpTxt(n.impuestos)}${n.vehiculo?` · Vehículo: ${vencEsc([n.vehiculo.marca,n.vehiculo.linea,n.vehiculo.modelo].join(' '))}`:''}</div>`;
+}
+
+function renderVencAlertas(){
+  const box = document.getElementById('venc-alertas'); if(!box) return;
+  const f = clientes.filter(c=>c.runt && ((c.runt.simit&&(c.runt.simit.totalMultas>0||c.runt.simit.totalDeuda>0)) || (c.runt.impuestos&&c.runt.impuestos.totalPendiente>0)));
+  if(!f.length){ box.innerHTML='<div style="font-size:12px;color:var(--muted)">Ningún cliente consultado con multas o impuestos pendientes.</div>'; return; }
+  let h='<div class="tbl-outer"><table style="min-width:560px"><thead><tr><th>Placa</th><th>Cliente</th><th>Celular</th><th>Multas SIMIT</th><th>Impuesto pendiente</th><th>Consultado</th></tr></thead><tbody>';
+  f.forEach(c=>{ h+=`<tr><td><b>${vencEsc(c.placa)}</b></td><td>${vencEsc(c.nombre)}</td><td>${vencEsc(c.celular||'')}</td><td>${vencMultasTxt(c.runt.simit)}</td><td>${vencImpTxt(c.runt.impuestos)}</td><td>${vencEsc((c.runt.consultado||'').slice(0,10))}</td></tr>`; });
+  box.innerHTML = h+'</tbody></table></div>';
+}
+function renderVenc(){
+  renderVencAlertas();
+  const sel = document.getElementById('venc-prueba-cli');
+  if(sel){ const cur = sel.value; sel.innerHTML = '<option value="">— sin comparar —</option>'+clientes.map(c=>`<option value="${c.id}">${vencEsc(c.placa||'')} · ${vencEsc(c.nombre||'')}</option>`).join(''); sel.value = cur; }
+  vencActualizarResumen(); vencRenderResultados();
+}
+
 // ── Inicializacion desde Supabase ──────────────────────────────────────────────
 async function inicializar(){
   _initSB(); // init Supabase after SDK is loaded
@@ -3206,10 +3551,12 @@ async function inicializar(){
   renderCobroHistorial(); renderBeneficiarioSelect(); cobroNuevo();
   renderReciboHistorial(); reciboNuevo(); renderNegocioResumen();
   renderGuiaHistorial(); guiaNuevo(); guiaInitEditores();
+  renderVenc();
 
   // Auto-refresh cada 20 segundos para ver cambios de otros usuarios
   if(SUPABASE_URL){
     setInterval(async()=>{
+      if(vencEnCurso) return;
       const d=await dbCargar();
       if(d){
         if(d.clientes){clientes=d.clientes;nextId=Math.max(0,...clientes.map(c=>c.id||0))+1;}
