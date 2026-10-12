@@ -1066,6 +1066,7 @@ tbody td{padding:8px 10px;vertical-align:middle}
         <div class="msg-tab" data-est="PROXIMO" onclick="setMsgTab('PROXIMO')">Proximo a vencer</div>
         <div class="msg-tab" data-est="ACTIVO" onclick="setMsgTab('ACTIVO')">Activo</div>
         <div class="msg-tab" data-est="AGRUPADO" onclick="setMsgTab('AGRUPADO')">Varios servicios (por placa)</div>
+        <div class="msg-tab" data-est="SERVICIOS" onclick="setMsgTab('SERVICIOS')">Por servicio</div>
       </div>
 
       <div id="msg-editor"></div>
@@ -1080,11 +1081,13 @@ tbody td{padding:8px 10px;vertical-align:middle}
           <span class="msg-var" onclick="copiarVar('{dias}')">&#123;dias&#125;</span>
           <span class="msg-var" onclick="copiarVar('{ciudad}')">&#123;ciudad&#125;</span>
           <span class="msg-var" onclick="copiarVar('{vendedor}')">&#123;vendedor&#125;</span>
-          <span class="msg-var" onclick="copiarVar('{valor_soat}')">&#123;valor_soat&#125;</span>
+          <span class="msg-var" onclick="copiarVar('{valor}')" title="Valor del SOAT, tecnomecánica u otro servicio de esa línea">&#123;valor&#125;</span>
           <span class="msg-var" onclick="copiarVar('{valor_svc}')">&#123;valor_svc&#125;</span>
           <span class="msg-var" onclick="copiarVar('{descuento}')">&#123;descuento&#125;</span>
+          <span class="msg-var" onclick="copiarVar('{nota}')" title="Texto adicional que defines para cada servicio en la pestaña «Por servicio»">&#123;nota&#125;</span>
           <span class="msg-var" onclick="copiarVar('{total}')">&#123;total&#125;</span>
         </div>
+        <div style="font-size:11px;color:var(--muted);margin-top:8px;line-height:1.5"><b>{valor}</b> = valor del servicio de esa línea (SOAT, tecnomecánica, seguro…) · <b>{valor_svc}</b> = lo que cobras por tu servicio · <b>{descuento}</b> = descuento aplicado · <b>{total}</b> = valor + servicio − descuento · <b>{nota}</b> = texto propio de cada servicio. (<b>{valor_soat}</b> sigue funcionando igual que {valor}.)</div>
       </div>
 
       <div class="modal-foot">
@@ -1234,6 +1237,7 @@ let mensajes=JSON.parse(JSON.stringify(MSGS_DEFAULT));
 let msgTabActual='VENCIDO';
 let msgTemp={};
 
+const notaServicio=id=>((mensajes&&mensajes.POR_SERVICIO)||{})[id]||'';
 function applyVars(tpl,c,dias){
   const fd=new Date(c.fecha+'T00:00:00').toLocaleDateString('es-CO',{day:'2-digit',month:'2-digit',year:'numeric'});
   return tpl
@@ -1245,6 +1249,8 @@ function applyVars(tpl,c,dias){
     .replace(/\{ciudad\}/g,c.ciudad||'')
     .replace(/\{vendedor\}/g,c.vendedor||'')
     .replace(/\{valor_soat\}/g,c.valorSoat?'$'+Number(c.valorSoat).toLocaleString('es-CO'):'sin valor')
+    .replace(/\{valor\}/g,'$'+Number(c.valorSoat||0).toLocaleString('es-CO'))
+    .replace(/\{nota\}/g,notaServicio(c.servicio))
     .replace(/\{valor_svc\}/g,'$'+Number(c.valorSvc||20000).toLocaleString('es-CO'))
     .replace(/\{descuento\}/g,'$'+Number(c.descuento||0).toLocaleString('es-CO'))
     .replace(/\{total\}/g,'$'+Number(totalLinea(c)).toLocaleString('es-CO'));
@@ -1255,9 +1261,11 @@ function genMsg(c,est,dias){
   if(cfg.modo==='auto'){
     const fd=new Date(c.fecha+'T00:00:00').toLocaleDateString('es-CO',{day:'2-digit',month:'2-digit',year:'numeric'});
     const sn=getSvc(c.servicio).nombre;
-    if(est==='VENCIDO') return `Hola ${c.nombre}, su ${sn} para la placa ${c.placa} vencio el ${fd}. Renovelo pronto para evitar sanciones.`;
-    if(est==='PROXIMO') return `Hola ${c.nombre}, su ${sn} para la placa ${c.placa} vence el ${fd} (en ${dias} dias). Renovelo a tiempo!`;
-    return `Hola ${c.nombre}, su ${sn} para la placa ${c.placa} esta vigente hasta el ${fd}. Gracias!`;
+    const nota=notaServicio(c.servicio);
+    const extra=nota?' '+nota:'';
+    if(est==='VENCIDO') return `Hola ${c.nombre}, su ${sn} para la placa ${c.placa} vencio el ${fd}. Renovelo pronto para evitar sanciones.${extra}`;
+    if(est==='PROXIMO') return `Hola ${c.nombre}, su ${sn} para la placa ${c.placa} vence el ${fd} (en ${dias} dias). Renovelo a tiempo!${extra}`;
+    return `Hola ${c.nombre}, su ${sn} para la placa ${c.placa} esta vigente hasta el ${fd}. Gracias!${extra}`;
   }
   return applyVars(cfg.texto,c,dias);
 }
@@ -1267,6 +1275,7 @@ const DEMO_CLIENTE_PREVIEW={id:0,nombre:'Carlos Rodriguez',placa:'ABC123',fecha:
 function abrirMensajes(){
   msgTemp=JSON.parse(JSON.stringify(mensajes));
   if(!msgTemp.AGRUPADO) msgTemp.AGRUPADO=Object.assign({},MSG_GRUPO_DEFAULT);
+  if(!msgTemp.POR_SERVICIO) msgTemp.POR_SERVICIO={};
   renderMsgEditor();
   document.getElementById('modal-mensajes').style.display='block';
 }
@@ -1279,6 +1288,7 @@ function setMsgTab(est){
 
 function renderMsgEditor(){
   if(msgTabActual==='AGRUPADO'){ renderMsgGrupoEditor(); return; }
+  if(msgTabActual==='SERVICIOS'){ renderMsgServiciosEditor(); return; }
   const cfg=msgTemp[msgTabActual];
   const isAuto=cfg.modo==='auto';
   const est=msgTabActual;
@@ -1377,6 +1387,20 @@ function guardarMensajes(){
 const waLink=(cel,msg)=>'https://wa.me/57'+cel+'?text='+encodeURIComponent(msg);
 const WA_SVG=`<svg viewBox="0 0 24 24" fill="currentColor"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"/></svg>`;
 
+// ── Texto propio de cada servicio (SOAT, tecnomecánica, seguro...) ──────────────
+function renderMsgServiciosEditor(){
+  if(!msgTemp.POR_SERVICIO) msgTemp.POR_SERVICIO={};
+  const esc=t=>String(t||'').replace(/&/g,'&amp;').replace(/</g,'&lt;');
+  document.getElementById('msg-editor').innerHTML=`
+    <div class="msg-card">
+      <div class="msg-card-head"><h4 style="color:var(--accent)">Texto propio de cada servicio</h4></div>
+      <div style="font-size:12px;color:var(--muted);margin-bottom:12px;line-height:1.6">Escribe lo que solo aplica a cada servicio (requisitos, documentos, recomendaciones). Se agrega <b>al final del mensaje automático</b> de ese servicio y, en los mensajes personalizados o por placa, se inserta donde pongas la variable <code>{nota}</code>. Si lo dejas vacío no se agrega nada.</div>
+      ${servicios.map(sv=>`<div class="field" style="margin-bottom:10px"><label><span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:${sv.color};margin-right:6px"></span>${esc(sv.nombre)}</label>
+        <textarea class="msg-textarea" rows="2" style="min-height:0" placeholder="Ej: Recuerde llevar la cédula y la tarjeta de propiedad." oninput="msgServicioCambio('${sv.id}',this.value)">${esc(msgTemp.POR_SERVICIO[sv.id])}</textarea></div>`).join('')}
+    </div>`;
+}
+function msgServicioCambio(id,v){ msgTemp.POR_SERVICIO[id]=v; }
+
 // ── Editor del mensaje por placa (pestaña "Varios servicios") ──────────────────
 let msgGrupoUltimo=null;
 function msgGrupoDemo(){
@@ -1399,7 +1423,7 @@ function renderMsgGrupoEditor(){
       ${campo('lineaVencido','Línea por servicio vencido',1)}
       ${campo('lineaProximo','Línea por servicio próximo a vencer',1)}
       ${campo('cierre','Cierre',2)}
-      <div style="font-size:11px;color:var(--muted);margin-bottom:10px">Variables del saludo y el cierre: <code>{nombre}</code> <code>{placa}</code> <code>{ciudad}</code> <code>{vendedor}</code> <code>{cantidad}</code> <code>{total}</code> · En las líneas: <code>{servicio}</code> <code>{fecha}</code> <code>{dias}</code> <code>{valor}</code></div>
+      <div style="font-size:11px;color:var(--muted);margin-bottom:10px">Variables del saludo y el cierre: <code>{nombre}</code> <code>{placa}</code> <code>{ciudad}</code> <code>{vendedor}</code> <code>{cantidad}</code> <code>{total}</code> · En las líneas: <code>{servicio}</code> <code>{fecha}</code> <code>{dias}</code> <code>{valor}</code> <code>{valor_svc}</code> <code>{descuento}</code> <code>{total}</code> <code>{nota}</code></div>
       <div class="msg-preview-label">Vista previa con una placa de ejemplo (tecnomecánica vencida + SOAT próximo)</div>
       <div class="msg-preview-box" id="mg-preview" style="white-space:pre-wrap">${genMsgGrupo(msgGrupoDemo(),cfg).replace(/</g,'&lt;')}</div>
     </div>`;
@@ -1590,7 +1614,7 @@ function vlFila(l){
     <div class="vl-c"><label>Vence</label><input class="vl-fecha" type="date" value="${l.fecha||''}"></div>
     <div class="vl-c"><label>Valor ($)</label><input class="vl-valor" type="number" min="0" step="1000" placeholder="0" value="${l.valorSoat||0}"></div>
     <div class="vl-c"><label>Servicio ($)</label><input class="vl-vsvc" type="number" min="0" step="1000" placeholder="20000" value="${l.valorSvc!=null?l.valorSvc:20000}"></div>
-    <div class="vl-c"><label>Dscto ($)</label><input class="vl-dscto" type="number" min="0" step="500" placeholder="0" title="Descuento sobre el valor del servicio (combo o promoción)" value="${l.descuento||0}"></div>
+    <div class="vl-c"><label>Dscto ($)</label><input class="vl-dscto" type="number" min="0" step="500" placeholder="0" title="Descuento libre sobre el total de esta línea (combo o promoción)" value="${l.descuento||0}"></div>
     <button type="button" class="vl-x" title="Quitar este servicio" onclick="vlQuitar(this)">✕</button>`;
   return d;
 }
@@ -1671,8 +1695,6 @@ function guardarCliente(){
   if(!nombre||!placa){alert('Complete nombre y placa.');return;}
   if(!lineas.length){alert('Agregue al menos un servicio con su fecha de vencimiento.');return;}
   if(lineas.some(l=>!l.fecha)){alert('Cada servicio necesita su fecha de vencimiento.');return;}
-  const exceso=lineas.find(l=>l.descuento>l.valorSvc);
-  if(exceso){alert('El descuento de '+getSvc(exceso.servicio).nombre+' no puede ser mayor que el valor del servicio ($'+Number(exceso.valorSvc).toLocaleString('es-CO')+').');return;}
   if(new Set(lineas.map(l=>l.servicio)).size!==lineas.length){alert('Hay un servicio repetido. Use una sola línea por servicio.');return;}
   if(clientes.some(c=>c.placa===placa&&c.placa!==editPlaca)){alert('La placa '+placa+' ya existe. Ábrala desde la lista y agregue allí el servicio.');return;}
   const owner={nombre,placa,celular,ciudad,vendedor,tipoVehiculo,cilindraje,docTipo,docNumero};
@@ -1714,7 +1736,7 @@ function genMsgGrupo(rows,cfg){
   const lineas=rows.map(c=>{
     const {est,dias}=calcEstado(c.fecha);
     const cuando=dias<0?'hace '+Math.abs(dias)+(Math.abs(dias)===1?' día':' días'):dias===0?'hoy':'en '+dias+(dias===1?' día':' días');
-    return R(est==='VENCIDO'?cfg.lineaVencido:cfg.lineaProximo,{servicio:getSvc(c.servicio).nombre,fecha:fmt(c.fecha),dias:cuando,valor:money(totalLinea(c))});
+    return R(est==='VENCIDO'?cfg.lineaVencido:cfg.lineaProximo,{servicio:getSvc(c.servicio).nombre,fecha:fmt(c.fecha),dias:cuando,valor:money(c.valorSoat),valor_svc:money(c.valorSvc!=null?c.valorSvc:20000),descuento:money(c.descuento),total:money(totalLinea(c)),nota:notaServicio(c.servicio)});
   });
   return [R(cfg.saludo,head),lineas.join('\n'),R(cfg.cierre,head)].filter(Boolean).join('\n');
 }
