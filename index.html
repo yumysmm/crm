@@ -233,7 +233,9 @@ tbody td{padding:8px 10px;vertical-align:middle}
 /* ── Panel lateral de herramientas ── */
 :root{--rail-w:244px}
 #tools-rail{position:fixed;top:0;left:0;bottom:0;width:var(--rail-w);background:var(--surface);border-right:1px solid var(--border);box-shadow:4px 0 18px rgba(30,77,139,.05);z-index:150;display:flex;flex-direction:column;overflow-y:auto}
-.rail-head{padding:20px 18px 14px;border-bottom:1px solid var(--border);background:linear-gradient(180deg,var(--accent-bg),var(--surface))}
+.rail-head{display:flex;align-items:center;gap:12px;padding:18px 22px 14px;border-bottom:1px solid var(--border);background:linear-gradient(180deg,var(--accent-bg),var(--surface))}
+.rail-head>svg{width:20px;height:20px;flex-shrink:0;color:var(--accent)}
+.rail-head-t{min-width:0;white-space:nowrap}
 .rail-head b{font-size:14px;font-weight:600;color:var(--accent);display:block;letter-spacing:-.2px}
 .rail-head span{font-size:11px;color:var(--muted)}
 .rail-group{padding:14px 10px 2px}
@@ -244,12 +246,24 @@ tbody td{padding:8px 10px;vertical-align:middle}
 .rail-item:hover svg{color:var(--accent)}
 .rail-item.active{background:var(--accent-bg);color:var(--accent);font-weight:600;border-left-color:var(--accent)}
 .rail-item.active svg{color:var(--accent)}
-.rail-foot{margin-top:auto;padding:12px 18px;font-size:11px;color:var(--muted);border-top:1px solid var(--border)}
+.rail-foot{margin-top:auto;white-space:nowrap;overflow:hidden;padding:12px 18px;font-size:11px;color:var(--muted);border-top:1px solid var(--border)}
 #tools-toggle{display:none}
 #conn-bar{z-index:120!important}
 #rail-backdrop{display:none}
 .overlay{background:rgba(30,77,139,.28)!important}
-@media(min-width:1101px){body{padding-left:var(--rail-w)}#conn-bar{left:calc(var(--rail-w) + 22px)!important}}
+@media(min-width:1101px){
+  :root{--rail-w:64px}
+  body{padding-left:var(--rail-w)}
+  #conn-bar{left:calc(var(--rail-w) + 22px)!important}
+  /* Columna retraída: solo iconos; se expande al acercar el cursor y se superpone al contenido */
+  #tools-rail{overflow-x:hidden;transition:width .2s ease,box-shadow .2s ease}
+  #tools-rail:hover:not(.rail-cerrado),#tools-rail:focus-within:not(.rail-cerrado){width:244px;box-shadow:10px 0 32px rgba(30,77,139,.16)}
+  .rail-label,.rail-title,.rail-head-t,.rail-foot{opacity:0;transition:opacity .15s ease}
+  #tools-rail:hover:not(.rail-cerrado) .rail-label,#tools-rail:hover:not(.rail-cerrado) .rail-title,#tools-rail:hover:not(.rail-cerrado) .rail-head-t,#tools-rail:hover:not(.rail-cerrado) .rail-foot,
+  #tools-rail:focus-within:not(.rail-cerrado) .rail-label,#tools-rail:focus-within:not(.rail-cerrado) .rail-title,#tools-rail:focus-within:not(.rail-cerrado) .rail-head-t,#tools-rail:focus-within:not(.rail-cerrado) .rail-foot{opacity:1;transition-delay:.06s}
+  .rail-label,.rail-title{white-space:nowrap}
+  .rail-item{padding-left:10px}
+}
 @media(max-width:1100px){
   #tools-rail{transform:translateX(-100%);transition:transform .22s;box-shadow:none;z-index:250}
   #tools-rail.open{transform:none;box-shadow:10px 0 30px rgba(30,77,139,.18)}
@@ -260,7 +274,7 @@ tbody td{padding:8px 10px;vertical-align:middle}
 /* ── Formulario por placa: lineas de servicio ── */
 .vl-box{border:1px solid var(--border);border-radius:var(--rs);padding:12px;background:var(--surface2);margin-bottom:6px}
 .vl-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;font-size:12.5px;font-weight:600}
-.vl-row{display:grid;grid-template-columns:1.5fr 1.15fr 1fr 1fr 30px;gap:8px;align-items:end;background:var(--surface);border:1px solid var(--border);border-radius:var(--rs);padding:8px 10px;margin-bottom:8px}
+.vl-row{display:grid;grid-template-columns:1.5fr 1.15fr 1fr 1fr .8fr 30px;gap:8px;align-items:end;background:var(--surface);border:1px solid var(--border);border-radius:var(--rs);padding:8px 10px;margin-bottom:8px}
 .vl-c label{display:block;font-size:10px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.4px;margin-bottom:3px}
 .vl-c select,.vl-c input{width:100%;height:34px;padding:0 8px;border:1px solid var(--border);border-radius:var(--rs);font-family:inherit;font-size:12.5px;color:var(--text);background:var(--bg);outline:none}
 .vl-c select:focus,.vl-c input:focus{border-color:var(--accent);background:var(--surface)}
@@ -276,64 +290,64 @@ tbody td{padding:8px 10px;vertical-align:middle}
 <body>
 <div id="rail-backdrop" onclick="closeToolsMenu()"></div>
 <aside id="tools-rail" aria-label="Herramientas">
-  <div class="rail-head"><b>Herramientas</b><span>Gestión del negocio</span></div>
+  <div class="rail-head"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5"/></svg><div class="rail-head-t"><b>Herramientas</b><span>Gestión del negocio</span></div></div>
   <div class="rail-group">
     <div class="rail-title">Principal</div>
-    <button class="rail-item" data-panel="clientes" onclick="railIrClientes()">
+    <button class="rail-item" data-panel="clientes" title="Clientes" onclick="railIrClientes()">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 11l9-8 9 8"/><path d="M5 10v10h14V10"/></svg>
-      Clientes
+      <span class="rail-label">Clientes</span>
     </button>
   </div>
   <div class="rail-group">
     <div class="rail-title">Caja y cobros</div>
-    <button class="rail-item" data-panel="caja-panel" onclick="railAbrir('caja-panel')">
+    <button class="rail-item" data-panel="caja-panel" title="Cuadre de Caja" onclick="railAbrir('caja-panel')">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="6" width="20" height="12" rx="2"/><circle cx="12" cy="12" r="2"/><path d="M6 12h.01M18 12h.01"/></svg>
-      Cuadre de Caja
+      <span class="rail-label">Cuadre de Caja</span>
     </button>
-    <button class="rail-item" data-panel="cobro-panel" onclick="railAbrir('cobro-panel')">
+    <button class="rail-item" data-panel="cobro-panel" title="Cuenta de Cobro" onclick="railAbrir('cobro-panel')">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="8" y1="13" x2="16" y2="13"/><line x1="8" y1="17" x2="16" y2="17"/></svg>
-      Cuenta de Cobro
+      <span class="rail-label">Cuenta de Cobro</span>
     </button>
-    <button class="rail-item" data-panel="recibo-panel" onclick="railAbrir('recibo-panel')">
+    <button class="rail-item" data-panel="recibo-panel" title="Recibo de Caja" onclick="railAbrir('recibo-panel')">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 3h16v18l-3-2-2 2-2-2-2 2-2-2-2 2-3-2z"/><line x1="8" y1="8" x2="16" y2="8"/><line x1="8" y1="12" x2="16" y2="12"/></svg>
-      Recibo de Caja
+      <span class="rail-label">Recibo de Caja</span>
     </button>
   </div>
   <div class="rail-group">
     <div class="rail-title">Consultas</div>
-    <button class="rail-item" data-panel="venc-panel" onclick="railAbrir('venc-panel')">
+    <button class="rail-item" data-panel="venc-panel" title="Vencimientos RUNT" onclick="railAbrir('venc-panel')">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><line x1="21" y1="21" x2="16.5" y2="16.5"/></svg>
-      Vencimientos RUNT
+      <span class="rail-label">Vencimientos RUNT</span>
     </button>
-    <button class="rail-item" data-panel="runt-panel" onclick="railAbrir('runt-panel')">
+    <button class="rail-item" data-panel="runt-panel" title="Consultar RUNT" onclick="railAbrir('runt-panel')">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="M21 21l-4.35-4.35"/></svg>
-      Consultar RUNT
+      <span class="rail-label">Consultar RUNT</span>
     </button>
   </div>
   <div class="rail-group">
     <div class="rail-title">Equipo</div>
-    <button class="rail-item" data-panel="servicios-panel" onclick="railAbrir('servicios-panel')">
+    <button class="rail-item" data-panel="servicios-panel" title="Guía de Servicios" onclick="railAbrir('servicios-panel')">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 19.5A2.5 2.5 0 016.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 014 19.5v-15A2.5 2.5 0 016.5 2z"/><line x1="9" y1="7" x2="15" y2="7"/><line x1="9" y1="11" x2="15" y2="11"/></svg>
-      Guía de Servicios
+      <span class="rail-label">Guía de Servicios</span>
     </button>
-    <button class="rail-item" onclick="abrirMensajes();closeToolsMenu()">
+    <button class="rail-item" title="Mensajes" onclick="abrirMensajes();closeToolsMenu()">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/></svg>
-      Mensajes
+      <span class="rail-label">Mensajes</span>
     </button>
   </div>
   <div class="rail-group">
     <div class="rail-title">Datos y sistema</div>
-    <button class="rail-item" data-panel="ie-panel" onclick="railAbrir('ie-panel')">
+    <button class="rail-item" data-panel="ie-panel" title="Importar / Exportar" onclick="railAbrir('ie-panel')">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4M7 10l5 5 5-5M12 15V3"/></svg>
-      Importar / Exportar
+      <span class="rail-label">Importar / Exportar</span>
     </button>
-    <button class="rail-item" data-panel="backup-panel" onclick="railAbrir('backup-panel')">
+    <button class="rail-item" data-panel="backup-panel" title="Copia / Restaurar" onclick="railAbrir('backup-panel')">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
-      Copia / Restaurar
+      <span class="rail-label">Copia / Restaurar</span>
     </button>
-    <button class="rail-item" onclick="abrirConfig();closeToolsMenu()">
+    <button class="rail-item" title="Configurar" onclick="abrirConfig();closeToolsMenu()">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 010 2.83 2 2 0 01-2.83 0l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-4 0v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83-2.83l.06-.06A1.65 1.65 0 004.68 15a1.65 1.65 0 00-1.51-1H3a2 2 0 010-4h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 012.83-2.83l.06.06A1.65 1.65 0 009 4.68a1.65 1.65 0 001-1.51V3a2 2 0 014 0v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 012.83 2.83l-.06.06A1.65 1.65 0 0019.4 9a1.65 1.65 0 001.51 1H21a2 2 0 010 4h-.09a1.65 1.65 0 00-1.51 1z"/></svg>
-      Configurar
+      <span class="rail-label">Configurar</span>
     </button>
   </div>
   <div class="rail-foot">CRM — Vencimientos</div>
@@ -1068,6 +1082,7 @@ tbody td{padding:8px 10px;vertical-align:middle}
           <span class="msg-var" onclick="copiarVar('{vendedor}')">&#123;vendedor&#125;</span>
           <span class="msg-var" onclick="copiarVar('{valor_soat}')">&#123;valor_soat&#125;</span>
           <span class="msg-var" onclick="copiarVar('{valor_svc}')">&#123;valor_svc&#125;</span>
+          <span class="msg-var" onclick="copiarVar('{descuento}')">&#123;descuento&#125;</span>
           <span class="msg-var" onclick="copiarVar('{total}')">&#123;total&#125;</span>
         </div>
       </div>
@@ -1194,6 +1209,7 @@ let cfgTemp={svc:[],cit:[],ven:[]};
 let importPending=[];
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
+const totalLinea=c=>Math.max(0,(c.valorSoat||0)+(c.valorSvc!=null?c.valorSvc:20000)-(c.descuento||0));
 const getSvc=id=>servicios.find(s=>s.id===id)||{nombre:'—',color:'#9ca3af'};
 function calcEstado(f){const d=Math.round((new Date(f+'T00:00:00')-hoy)/86400000);return{est:d<0?'VENCIDO':d<=30?'PROXIMO':'ACTIVO',dias:d};}
 // ── Maestro de mensajes ───────────────────────────────────────────────────────
@@ -1230,7 +1246,8 @@ function applyVars(tpl,c,dias){
     .replace(/\{vendedor\}/g,c.vendedor||'')
     .replace(/\{valor_soat\}/g,c.valorSoat?'$'+Number(c.valorSoat).toLocaleString('es-CO'):'sin valor')
     .replace(/\{valor_svc\}/g,'$'+Number(c.valorSvc||20000).toLocaleString('es-CO'))
-    .replace(/\{total\}/g,'$'+Number((c.valorSoat||0)+(c.valorSvc||20000)).toLocaleString('es-CO'));
+    .replace(/\{descuento\}/g,'$'+Number(c.descuento||0).toLocaleString('es-CO'))
+    .replace(/\{total\}/g,'$'+Number(totalLinea(c)).toLocaleString('es-CO'));
 }
 
 function genMsg(c,est,dias){
@@ -1462,7 +1479,7 @@ function render(mantenerPagina){
   const stats={ACTIVO:0,PROXIMO:0,VENCIDO:0};
   let notifCnt=0;
   clientes.forEach(c=>{stats[calcEstado(c.fecha).est]++;if(c.notifFecha===hoyStr)notifCnt++;});
-  const totalVal=clientes.reduce((sum,c)=>(c.valorSoat||0)+(c.valorSvc||0)+sum,0);
+  const totalVal=clientes.reduce((sum,c)=>Math.max(0,(c.valorSoat||0)+(c.valorSvc||0)-(c.descuento||0))+sum,0);
   document.getElementById('s-total').textContent=clientes.length;
   document.getElementById('s-activo').textContent=stats.ACTIVO;
   document.getElementById('s-proximo').textContent=stats.PROXIMO;
@@ -1486,7 +1503,7 @@ function renderTabla(visible){
   const inicio=(paginaActual-1)*POR_PAGINA;
   const pagina=visible.slice(inicio, inicio+POR_PAGINA);
 
-  const totalVisible=visible.reduce((s,c)=>(c.valorSoat||0)+(c.valorSvc||20000)+s,0);
+  const totalVisible=visible.reduce((s,c)=>totalLinea(c)+s,0);
   const porPlaca={};clientes.forEach(x=>{porPlaca[x.placa]=(porPlaca[x.placa]||0)+1;});
   tbody.innerHTML=pagina.map((c,i)=>{
   const iGlobal=inicio+i;
@@ -1573,6 +1590,7 @@ function vlFila(l){
     <div class="vl-c"><label>Vence</label><input class="vl-fecha" type="date" value="${l.fecha||''}"></div>
     <div class="vl-c"><label>Valor ($)</label><input class="vl-valor" type="number" min="0" step="1000" placeholder="0" value="${l.valorSoat||0}"></div>
     <div class="vl-c"><label>Servicio ($)</label><input class="vl-vsvc" type="number" min="0" step="1000" placeholder="20000" value="${l.valorSvc!=null?l.valorSvc:20000}"></div>
+    <div class="vl-c"><label>Dscto ($)</label><input class="vl-dscto" type="number" min="0" step="500" placeholder="0" title="Descuento sobre el valor del servicio (combo o promoción)" value="${l.descuento||0}"></div>
     <button type="button" class="vl-x" title="Quitar este servicio" onclick="vlQuitar(this)">✕</button>`;
   return d;
 }
@@ -1594,7 +1612,8 @@ function vlLeer(){
     servicio:r.querySelector('.vl-svc').value,
     fecha:r.querySelector('.vl-fecha').value,
     valorSoat:parseFloat(r.querySelector('.vl-valor').value)||0,
-    valorSvc:r.querySelector('.vl-vsvc').value===''?20000:(parseFloat(r.querySelector('.vl-vsvc').value)||0)
+    valorSvc:r.querySelector('.vl-vsvc').value===''?20000:(parseFloat(r.querySelector('.vl-vsvc').value)||0),
+    descuento:parseFloat(r.querySelector('.vl-dscto').value)||0
   }));
 }
 function poblarSelectsModal(c){
@@ -1617,7 +1636,7 @@ function abrirModal(id){
   const lista=document.getElementById('vl-lista'); lista.innerHTML='';
   if(c){
     clientes.filter(x=>x.placa===c.placa).sort((a,b)=>a.fecha>b.fecha?1:-1)
-      .forEach(x=>vlAgregar({rid:x.id,servicio:x.servicio,fecha:x.fecha,valorSoat:x.valorSoat,valorSvc:x.valorSvc}));
+      .forEach(x=>vlAgregar({rid:x.id,servicio:x.servicio,fecha:x.fecha,valorSoat:x.valorSoat,valorSvc:x.valorSvc,descuento:x.descuento}));
   } else vlAgregar({});
   vlActualizarVacio();
   document.getElementById('btn-elim-vehiculo').style.display=c?'':'none';
@@ -1652,13 +1671,15 @@ function guardarCliente(){
   if(!nombre||!placa){alert('Complete nombre y placa.');return;}
   if(!lineas.length){alert('Agregue al menos un servicio con su fecha de vencimiento.');return;}
   if(lineas.some(l=>!l.fecha)){alert('Cada servicio necesita su fecha de vencimiento.');return;}
+  const exceso=lineas.find(l=>l.descuento>l.valorSvc);
+  if(exceso){alert('El descuento de '+getSvc(exceso.servicio).nombre+' no puede ser mayor que el valor del servicio ($'+Number(exceso.valorSvc).toLocaleString('es-CO')+').');return;}
   if(new Set(lineas.map(l=>l.servicio)).size!==lineas.length){alert('Hay un servicio repetido. Use una sola línea por servicio.');return;}
   if(clientes.some(c=>c.placa===placa&&c.placa!==editPlaca)){alert('La placa '+placa+' ya existe. Ábrala desde la lista y agregue allí el servicio.');return;}
   const owner={nombre,placa,celular,ciudad,vendedor,tipoVehiculo,cilindraje,docTipo,docNumero};
   const conservar=new Set(lineas.filter(l=>l.rid).map(l=>l.rid));
   clientes=clientes.filter(c=>c.placa!==editPlaca||conservar.has(c.id)); // quita los servicios eliminados en el formulario
   lineas.forEach(l=>{
-    const datos={servicio:l.servicio,fecha:l.fecha,valorSoat:l.valorSoat,valorSvc:l.valorSvc};
+    const datos={servicio:l.servicio,fecha:l.fecha,valorSoat:l.valorSoat,valorSvc:l.valorSvc,descuento:l.descuento};
     const ex=l.rid?clientes.find(x=>x.id===l.rid):null;
     if(ex) Object.assign(ex,owner,datos);
     else clientes.push({id:nextId++,...owner,...datos,notifFecha:null});
@@ -1687,13 +1708,13 @@ function genMsgGrupo(rows,cfg){
   const base=rows[0];
   const money=n=>'$'+Number(n||0).toLocaleString('es-CO');
   const fmt=f=>new Date(f+'T00:00:00').toLocaleDateString('es-CO',{day:'2-digit',month:'2-digit',year:'numeric'});
-  const total=rows.reduce((s,c)=>s+(c.valorSoat||0)+(c.valorSvc!=null?c.valorSvc:20000),0);
+  const total=rows.reduce((s,c)=>s+totalLinea(c),0);
   const R=(t,m)=>String(t).replace(/\{(\w+)\}/g,(x,k)=>k in m?m[k]:x);
   const head={nombre:base.nombre||'',placa:base.placa||'',ciudad:base.ciudad||'',vendedor:base.vendedor||'',cantidad:rows.length,total:money(total)};
   const lineas=rows.map(c=>{
     const {est,dias}=calcEstado(c.fecha);
     const cuando=dias<0?'hace '+Math.abs(dias)+(Math.abs(dias)===1?' día':' días'):dias===0?'hoy':'en '+dias+(dias===1?' día':' días');
-    return R(est==='VENCIDO'?cfg.lineaVencido:cfg.lineaProximo,{servicio:getSvc(c.servicio).nombre,fecha:fmt(c.fecha),dias:cuando,valor:money((c.valorSoat||0)+(c.valorSvc!=null?c.valorSvc:20000))});
+    return R(est==='VENCIDO'?cfg.lineaVencido:cfg.lineaProximo,{servicio:getSvc(c.servicio).nombre,fecha:fmt(c.fecha),dias:cuando,valor:money(totalLinea(c))});
   });
   return [R(cfg.saludo,head),lineas.join('\n'),R(cfg.cierre,head)].filter(Boolean).join('\n');
 }
@@ -1737,16 +1758,25 @@ function railAplicarVista(){
   const cv = document.getElementById('clientes-view');
   cv.style.display = RAIL_PANELES_VISTA.some(id=>document.getElementById(id).classList.contains('open')) ? 'none' : '';
 }
+function railCerrar(){
+  const r=document.getElementById('tools-rail');
+  r.classList.add('rail-cerrado');                 // se retrae aunque el cursor siga encima
+  if(document.activeElement&&r.contains(document.activeElement)) document.activeElement.blur();
+}
+document.addEventListener('DOMContentLoaded',()=>{
+  const r=document.getElementById('tools-rail');
+  if(r) r.addEventListener('mouseleave',()=>r.classList.remove('rail-cerrado'));
+});
 function railIrClientes(){
   document.querySelectorAll('.panel.open').forEach(p=>p.classList.remove('open'));
-  railAplicarVista(); railActualizar(); closeToolsMenu(); window.scrollTo({top:0});
+  railAplicarVista(); railActualizar(); closeToolsMenu(); railCerrar(); window.scrollTo({top:0});
 }
 function railAbrir(id){
   const yaAbierto = document.getElementById(id).classList.contains('open');
   document.querySelectorAll('.panel.open').forEach(p=>{ if(p.id!==id) p.classList.remove('open'); });
   if(yaAbierto){ document.getElementById(id).classList.remove('open'); if(id==='venc-panel'){} }
   else { togglePanel(id); }
-  railAplicarVista(); railActualizar(); closeToolsMenu(); window.scrollTo({top:0});
+  railAplicarVista(); railActualizar(); closeToolsMenu(); railCerrar(); window.scrollTo({top:0});
 }
 function abrirRUNT(){const p=document.getElementById('runt-placa').value.trim().toUpperCase().replace(/[^A-Z0-9]/g,'');if(!p){alert('Ingresa una placa.');return;}window.open('https://www.runt.gov.co/consultaCiudadana/#/consultaVehiculo','_blank');toast('RUNT abierto — placa: '+p);}
 function abrirRUNTp(placa){document.getElementById('runt-placa').value=placa;document.getElementById('runt-panel').classList.add('open');window.open('https://www.runt.gov.co/consultaCiudadana/#/consultaVehiculo','_blank');toast('RUNT abierto: '+placa);}
@@ -1828,9 +1858,10 @@ function procesarArchivo(file){
         const dtRaw=(r['tipo_documento']||r['tipo documento']||r['tipo de documento']||r['tipo doc']||'CC').toUpperCase();
         const docTipo=dtRaw.includes('EXTRANJ')||dtRaw==='CE'?'CE':dtRaw.includes('NIT')?'NIT':dtRaw.includes('TARJETA')||dtRaw==='TI'?'TI':dtRaw.includes('PASAPORTE')||dtRaw==='PA'?'PA':'CC';
         const docNumero=(r['documento']||r['cedula']||r['numero_documento']||r['numero documento']||r['nit']||'').toUpperCase().replace(/[^A-Z0-9]/g,'');
+        const descuento=parseFloat((r['descuento']||r['dscto']||r['desc']||'0').toString().replace(/[^0-9.]/g,''))||0;
         let fecha=r['fecha']||r['fecha de vencimiento']||r['vencimiento']||'';
         if(fecha&&fecha.includes('/')){const p=fecha.split('/');if(p.length===3)fecha=p[2].length===4?`${p[2]}-${p[1].padStart(2,'0')}-${p[0].padStart(2,'0')}`:`${p[0]}-${p[1].padStart(2,'0')}-${p[2].padStart(2,'0')}`;}
-        return{nombre,placa,fecha,celular,servicio,ciudad,vendedor,tipoVehiculo,cilindraje,docTipo,docNumero,valorSoat,valorSvc,notifFecha:null};
+        return{nombre,placa,fecha,celular,servicio,ciudad,vendedor,tipoVehiculo,cilindraje,docTipo,docNumero,valorSoat,valorSvc,descuento,notifFecha:null};
       }).filter(r=>r.nombre&&r.placa&&r.fecha);
       if(!parsed.length){alert('No se encontraron filas validas.');return;}
       mostrarPreview(parsed);
@@ -1883,19 +1914,19 @@ function exportarExcel(modo){
       'Ciudad':c.ciudad||'','Vendedor':c.vendedor||'','Fecha Vencimiento':c.fecha,
       'Tipo Vehiculo':tvLabel(c.tipoVehiculo),'Cilindraje':c.cilindraje||'','Tipo Doc':c.docNumero?(c.docTipo||'CC'):'','Documento':c.docNumero||'',
       'Estado':est,'Dias Restantes':dias,'Celular':c.celular||'',
-      'Valor SOAT':c.valorSoat||0,'Valor Servicio':c.valorSvc||20000,'Total':(c.valorSoat||0)+(c.valorSvc||20000),
+      'Valor SOAT':c.valorSoat||0,'Valor Servicio':c.valorSvc||20000,'Descuento':c.descuento||0,'Total':totalLinea(c),
       'Notificado':c.notifFecha||'No','Link WhatsApp':c.celular?'https://wa.me/57'+c.celular:''};
   });
   const wb=XLSX.utils.book_new();const ws=XLSX.utils.json_to_sheet(rows);
-  ws['!cols']=[{wch:5},{wch:26},{wch:10},{wch:18},{wch:14},{wch:16},{wch:18},{wch:12},{wch:11},{wch:9},{wch:16},{wch:12},{wch:14},{wch:14},{wch:14},{wch:14},{wch:14},{wch:14},{wch:35}];
+  ws['!cols']=[{wch:5},{wch:26},{wch:10},{wch:18},{wch:14},{wch:16},{wch:18},{wch:12},{wch:11},{wch:9},{wch:16},{wch:12},{wch:14},{wch:14},{wch:14},{wch:14},{wch:12},{wch:14},{wch:14},{wch:14},{wch:35}];
   XLSX.utils.book_append_sheet(wb,ws,'Clientes');
   XLSX.writeFile(wb,(modo==='todos'?'CRM_todos':modo==='vencidos'?'CRM_vencidos':'CRM_filtro')+'_'+hoyStr+'.xlsx');
   toast(`Exportados ${rows.length} clientes`);
 }
 function descargarPlantilla(){
   const rows=[
-    {nombre:'Carlos Rodriguez',placa:'ABC123',fecha:'2026-05-15',celular:'3001234567',servicio:'SOAT',ciudad:'Medellin',vendedor:'Juan Gomez',tipo_vehiculo:'Moto',cilindraje:125,tipo_documento:'CC',documento:'1020304050',valor_soat:195000,valor_servicio:20000},
-    {nombre:'Carlos Rodriguez',placa:'ABC123',fecha:'2026-09-22',celular:'3001234567',servicio:'Revision Tecnica',ciudad:'Medellin',vendedor:'Juan Gomez',tipo_vehiculo:'Moto',cilindraje:125,tipo_documento:'CC',documento:'1020304050',valor_soat:0,valor_servicio:20000},
+    {nombre:'Carlos Rodriguez',placa:'ABC123',fecha:'2026-05-15',celular:'3001234567',servicio:'SOAT',ciudad:'Medellin',vendedor:'Juan Gomez',tipo_vehiculo:'Moto',cilindraje:125,tipo_documento:'CC',documento:'1020304050',valor_soat:195000,valor_servicio:20000,descuento:0},
+    {nombre:'Carlos Rodriguez',placa:'ABC123',fecha:'2026-09-22',celular:'3001234567',servicio:'Revision Tecnica',ciudad:'Medellin',vendedor:'Juan Gomez',tipo_vehiculo:'Moto',cilindraje:125,tipo_documento:'CC',documento:'1020304050',valor_soat:0,valor_servicio:20000,descuento:5000},
     {nombre:'Maria Garcia',    placa:'XYZ456',fecha:'2026-06-20',celular:'3119876543',servicio:'Revision Tecnica',ciudad:'Bogota',vendedor:'Maria Lopez',tipo_vehiculo:'Carro',cilindraje:1600,tipo_documento:'CC',documento:'1020304051',valor_soat:0,valor_servicio:20000},
     {nombre:'Ana Lopez',       placa:'GHI012',fecha:'2026-07-10',celular:'3156789012',servicio:'Seguro Todo Riesgo',ciudad:'Cali',vendedor:'Carlos Perez',tipo_vehiculo:'Moto',cilindraje:150,tipo_documento:'CC',documento:'1020304052',valor_soat:0,valor_servicio:20000},
     {nombre:'Pedro Ramirez',   placa:'MTC789',fecha:'2026-08-05',celular:'3201234567',servicio:'SOAT',ciudad:'Barranquilla',vendedor:'Juan Gomez',tipo_vehiculo:'Motocarro',cilindraje:200,tipo_documento:'NIT',documento:'900123456',valor_soat:220000,valor_servicio:20000},
